@@ -1,0 +1,143 @@
+@import "tailwindcss";
+
+@theme {
+  --font-sans: 'Manrope', system-ui, -apple-system, sans-serif;
+  --font-serif: 'Instrument Serif', Georgia, serif;
+  --font-mono: ui-monospace, SFMono-Regular, Menlo, monospace;
+
+  --color-app-bg: var(--app-bg);
+  --color-surface: var(--surface);
+  --color-surface-raised: var(--surface-raised);
+  --color-text-primary: var(--text-primary);
+  --color-text-secondary: var(--text-secondary);
+  --color-text-muted: var(--text-muted);
+  --color-border: var(--border);
+  --color-primary: var(--primary);
+  --color-primary-hover: var(--primary-hover);
+  --color-primary-soft: var(--primary-soft);
+  --color-paper: var(--paper);
+  --color-staff-line: var(--staff-line);
+  --color-notation-ink: var(--notation-ink);
+  --color-playhead: var(--playhead);
+  --color-brass: var(--brass);
+  --color-warning: var(--warning);
+  --color-warning-bg: var(--warning-bg);
+  --color-danger: var(--danger);
+  --color-danger-bg: var(--danger-bg);
+  --color-success: var(--success);
+  --color-footer-bg: var(--footer-bg);
+  --color-footer-text: var(--footer-text);
+  --color-footer-muted: var(--footer-muted);
+  --color-footer-border: var(--footer-border);
+  --color-footer-focus: var(--footer-focus);
+}
+
+:root {
+  --app-bg: #F6F5F0;
+  --surface: #FFFEFA;
+  --surface-raised: #FFFFFF;
+  --text-primary: #202B2A;
+  --text-secondary: #5D6D68;
+  --text-muted: #74817C;
+  --border: #DDE3DD;
+  --primary: #236D63;
+  --primary-hover: #1A5A52;
+  --primary-soft: #DFEEE8;
+  --paper: #FFFDF7;
+  --staff-line: #C6CFC9;
+  --notation-ink: #192522;
+  --playhead: #187D6D;
+  --brass: #C78E3B;
+  --warning: #9B651D;
+  --warning-bg: #FBF0D8;
+  --danger: #B3443F;
+  --danger-bg: #FCE9E6;
+  --success: #287A58;
+
+  /* Footer uses a deliberate deep-ink brand surface in both themes. */
+  --footer-bg: #141C1A;
+  --footer-text: #E7EFEA;
+  --footer-muted: #A7B6AF;
+  --footer-border: #2B3835;
+  --footer-focus: #83C9B8;
+}
+
+.dark {
+  --app-bg: #101715;
+  --surface: #171F1D;
+  --surface-raised: #202A27;
+  --text-primary: #EDF4F0;
+  --text-secondary: #B2BFB8;
+  --text-muted: #91A099;
+  --border: #34423C;
+  --primary: #83C9B8;
+  --primary-hover: #A1DACD;
+  --primary-soft: #203C34;
+  --paper: #151E1B;
+  /* Raised for legibility on the dark score surface: #46564F was too close to
+     the paper colour, which made staff lines read as invisible. */
+  --staff-line: #84958B;
+  --notation-ink: #F2F5F0;
+  --playhead: #8ADBC8;
+  --brass: #E0B05D;
+  --warning: #F0C477;
+  --warning-bg: #382D1D;
+  --danger: #FF938A;
+  --danger-bg: #3C2423;
+  --success: #8DD5A7;
+}
+
+/* Base custom scrollbar styling */
+::-webkit-scrollbar {
+  width: 8px;
+  height: 8px;
+}
+::-webkit-scrollbar-track {
+  background: transparent;
+}
+::-webkit-scrollbar-thumb {
+  background: var(--border);
+  border-radius: 4px;
+}
+::-webkit-scrollbar-thumb:hover {
+  background: var(--text-muted);
+}
+* {
+  scrollbar-color: var(--border) transparent;
+  scrollbar-width: thin;
+}
+
+/* Consistent, theme-aware keyboard focus for every interactive element. */
+:where(a, button, input, select, textarea, summary, [tabindex]):focus-visible {
+  outline: 2px solid var(--primary);
+  outline-offset: 2px;
+  border-radius: 6px;
+}
+
+html {
+  scroll-behavior: smooth;
+}
+
+/* Anchor targets sit under the sticky header, so leave it room. */
+:where(section[id], [id][data-anchor]) {
+  scroll-margin-top: 5.5rem;
+}
+
+/* Honour a reduced-motion request: drop transitions and animation entirely.
+   Playback and status feedback still work — they are state, not decoration. */
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    animation-duration: 0.001ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.001ms !important;
+    scroll-behavior: auto !important;
+  }
+}
+
+@media print {
+  .no-print {
+    display: none !important;
+  }
+}

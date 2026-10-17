@@ -1,0 +1,53 @@
+{
+  "name": "musikflo",
+  "private": true,
+  "version": "1.0.0",
+  "description": "MusikFlo — browser-based sheet music studio and composer",
+  "license": "MIT",
+  "author": "Aztras AI Tech Solutions",
+  "type": "module",
+  "scripts": {
+    "dev": "node scripts/copy-model.mjs && vite --port=3000 --host=0.0.0.0",
+    "build": "node scripts/copy-model.mjs && vite build",
+    "preview": "vite preview",
+    "clean": "node -e \"require('fs').rmSync('dist',{recursive:true,force:true})\"",
+    "typecheck": "tsc --noEmit",
+    "lint": "tsc --noEmit",
+    "test": "vitest run",
+    "test:watch": "vitest",
+    "test:coverage": "vitest run --coverage",
+    "test:fixtures": "node scripts/make-audio-fixtures.mjs",
+    "test:e2e": "node scripts/make-audio-fixtures.mjs && playwright test"
+  },
+  "dependencies": {
+    "@spotify/basic-pitch": "1.0.1",
+    "jspdf": "^4.2.1",
+    "lucide-react": "^0.546.0",
+    "midi-writer-js": "^3.2.1",
+    "motion": "^12.23.24",
+    "react": "^19.0.1",
+    "react-dom": "^19.0.1",
+    "tone": "^15.1.22",
+    "vexflow": "^5.0.0"
+  },
+  "devDependencies": {
+    "@breezystack/lamejs": "^1.2.7",
+    "@playwright/test": "^1.56.0",
+    "@tailwindcss/vite": "^4.3.3",
+    "@testing-library/dom": "^10.4.0",
+    "@testing-library/jest-dom": "^6.6.3",
+    "@testing-library/react": "^16.1.0",
+    "@testing-library/user-event": "^14.5.2",
+    "@types/node": "^22.14.0",
+    "@types/react": "^19.3.0",
+    "@types/react-dom": "^19.3.0",
+    "@vitejs/plugin-react": "^6.1.1",
+    "@vitest/coverage-v8": "^3.2.4",
+    "fake-indexeddb": "^6.0.0",
+    "jsdom": "^25.0.1",
+    "tailwindcss": "^4.3.3",
+    "typescript": "^5.9.3",
+    "vite": "^8.3.0",
+    "vitest": "^3.2.4"
+  }
+}

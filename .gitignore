@@ -1,0 +1,29 @@
+node_modules/
+build/
+dist/
+coverage/
+.DS_Store
+*.log
+.env*
+!.env.example
+
+# Test and tooling output
+test-results/
+playwright-report/
+blob-report/
+.vite/
+# Download inspection directory used by the export browser tests
+scratch/
+
+# Generated assets: both are copied/generated from pinned sources by npm scripts
+public/model/
+e2e/fixtures/
+
+# Agent tooling: installed skills and local agent state, not app source.
+# skills-lock.json records what was installed, so these stay reproducible.
+.agents/
+.claude/
+.commandcode/
+
+# /brag renders, moved out of the repository
+brag-output/

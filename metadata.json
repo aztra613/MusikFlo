@@ -1,0 +1,6 @@
+{
+  "name": "MusikFlo — Sheet Music Studio & Composer",
+  "description": "Browser-based music composition and playback studio. Compose on the staff, hear every note with synthesised instruments, and export your music. Runs entirely in the browser: no account, no server, and no server-side API.",
+  "requestFramePermissions": [],
+  "majorCapabilities": []
+}
