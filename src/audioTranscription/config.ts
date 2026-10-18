@@ -6,11 +6,11 @@
  * without hunting through the feature.
  */
 
-/** Source file size ceiling. */
-export const MAX_FILE_BYTES = 20 * 1024 * 1024; // 20 MiB
+/** Source file size ceiling (increased to 50 MiB for longer WAV recordings). */
+export const MAX_FILE_BYTES = 50 * 1024 * 1024; // 50 MiB
 
-/** Decoded duration ceiling. */
-export const MAX_DURATION_SECONDS = 60;
+/** Decoded duration ceiling (raised to 180s / 3 minutes). */
+export const MAX_DURATION_SECONDS = 180;
 
 /** File extensions offered in the picker and accepted for validation. */
 export const ACCEPTED_EXTENSIONS = ['.mp3', '.wav'] as const;

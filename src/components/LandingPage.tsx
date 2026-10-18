@@ -5,7 +5,7 @@ import { audioEngine } from '../audio/audioEngine';
 import { INSTRUMENT_IDS, VOICES } from '../audio/instruments';
 import { BrandMark } from './BrandMark';
 import { Footer } from './Footer';
-import { ArrowRight, Download, FileAudio, FileCode, Music, Play, Printer, Square, Sun, Moon } from 'lucide-react';
+import { ArrowRight, Download, FileAudio, FileCode, Music, Play, Printer, Square, Sun, Moon, ShieldCheck, Smartphone, Sparkles } from 'lucide-react';
 
 interface LandingPageProps {
   onStartComposing: () => void;
@@ -88,6 +88,21 @@ const FEATURES = [
     icon: Download,
     title: 'Take your music with you',
     body: 'Download an editable project backup, or export MIDI, MusicXML, WAV and PDF copies of your score.',
+  },
+  {
+    icon: FileAudio,
+    title: 'Audio to sheet music',
+    body: 'Convert MP3 or WAV clips up to 3 minutes into editable notation using on-device neural transcription.',
+  },
+  {
+    icon: ShieldCheck,
+    title: 'Zero-server privacy',
+    body: 'Your recordings and compositions never leave your device. All synthesis, ML, and exports run 100% in-browser.',
+  },
+  {
+    icon: Smartphone,
+    title: 'Installable offline PWA',
+    body: 'Install MusikFlo on your desktop, tablet, or phone for an instant, distraction-free native studio experience.',
   },
 ];
 

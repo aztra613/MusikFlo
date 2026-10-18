@@ -69,6 +69,13 @@ export const LEGAL_DOCUMENTS: Record<LegalRouteName, LegalDocument> = {
         callout:
           'Browser storage belongs to this specific browser profile and origin. It is not encrypted by MusikFlo, it can be evicted by your browser under storage pressure, and it is not available from another device or browser. Export important work.',
       },
+      {
+        heading: 'Compliance and absence of liability for user conduct',
+        paragraphs: [
+          'Because MusikFlo operates strictly inside your browser sandbox with zero server-side storage, we have zero knowledge, zero visibility, and zero custody of the audio recordings you process or the music you compose.',
+          'MusikFlo does not and cannot monitor user conduct or verify copyright ownership of user materials. All legal responsibility and liability for files uploaded, transcribed, composed, or exported using this application rests solely and exclusively with the user. MusikFlo and its creators disclaim all liability for any illegal, infringing, or unauthorized activities conducted by users on their own devices.',
+        ],
+      },
     ],
   },
 
@@ -97,9 +104,24 @@ export const LEGAL_DOCUMENTS: Record<LegalRouteName, LegalDocument> = {
         ],
       },
       {
-        heading: 'Acceptable use',
+        heading: 'Acceptable use & prohibition of illegal activity',
         paragraphs: [
-          'Do not use MusikFlo to create or distribute material you do not have the right to use, and do not attempt to interfere with the application or the hosting service that delivers it.',
+          'You agree to use MusikFlo only for lawful purposes and in strict accordance with all applicable local, national, and international laws, regulations, and copyright statutes.',
+          'Do not use MusikFlo to create, import, transcribe, export, or distribute any material you do not have the legal right to use, including copyrighted sound recordings, musical works, or intellectual property without proper authorization. You warrant that you possess all necessary rights, licenses, and permissions for any audio files or sheet music you process.',
+          'You must not use the software to facilitate, generate, or propagate any defamatory, obscene, fraudulent, harmful, or otherwise unlawful material, nor attempt to interfere with the application or the hosting service that delivers it.',
+        ],
+      },
+      {
+        heading: 'Disclaimer of liability for illegal activities and user conduct',
+        paragraphs: [
+          'To the fullest extent permitted by applicable law, MusikFlo, its authors, developers, contributors, and Aztras AI Tech Solutions explicitly disclaim all liability and responsibility for any illegal, infringing, tortious, or unauthorized activities committed by users of the software.',
+          'MusikFlo is a client-side software utility, not a content hosting provider, publisher, or legal arbiter. We do not review, endorse, or verify user content. You are solely and exclusively liable for any legal consequences, damages, claims, or penalties arising from your use of the software.',
+        ],
+      },
+      {
+        heading: 'Indemnification',
+        paragraphs: [
+          'You agree to defend, indemnify, and hold harmless MusikFlo, its creators, developers, contributors, and Aztras AI Tech Solutions from and against any and all claims, liabilities, damages, losses, judgements, costs, and expenses (including reasonable legal and attorney fees) arising out of or related to your use of the application, your compositions, your uploaded audio, your violation of these terms, or your infringement of any third-party rights.',
         ],
       },
       {
@@ -177,6 +199,13 @@ export const LEGAL_DOCUMENTS: Record<LegalRouteName, LegalDocument> = {
         heading: 'Keep backups',
         paragraphs: [
           'Your work lives in your browser. Clearing site data, switching browser or device, or browser storage eviction will lose it. Export a .musikflo backup for anything you care about, and treat exported files as the authoritative copy.',
+        ],
+      },
+      {
+        heading: 'No liability for user content, uploads, or copyright infringement',
+        paragraphs: [
+          'MusikFlo is a neutral, self-contained, client-side software utility. The developers and publishers do not monitor, review, store, or verify the audio files users upload for transcription or the sheet music they compose.',
+          'You are solely and exclusively responsible for ensuring that any audio recording, composition, or file you process with MusikFlo complies with applicable copyright and trademark laws, and that you possess all necessary rights or licenses. MusikFlo and Aztras AI Tech Solutions disclaim any and all liability for unauthorized transcription of copyrighted materials, intellectual property infringement, or any illegal conduct carried out by users.',
         ],
       },
     ],

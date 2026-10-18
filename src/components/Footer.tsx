@@ -56,9 +56,12 @@ export const Footer: React.FC<FooterProps> = ({
           </nav>
         </div>
 
-        <div className="mt-8 pt-5 border-t border-footer-border">
+        <div className="mt-8 pt-5 border-t border-footer-border flex flex-col sm:flex-row sm:items-center sm:justify-between gap-2">
           <p className="text-[11px] text-footer-muted">
             © {year} {PRODUCT_OWNER}. All rights reserved.
+          </p>
+          <p className="text-[11px] text-footer-muted">
+            Independent client-side software. Users are solely responsible for copyright compliance and lawful use.
           </p>
         </div>
       </div>

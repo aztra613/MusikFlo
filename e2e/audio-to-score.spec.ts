@@ -174,15 +174,15 @@ test.describe('audio to sheet music', () => {
   test('rejects a clip that is longer than the limit without starting work', async ({ page }) => {
     await page.goto('/#transcribe');
 
-    // 70 seconds, just above the 60-second pilot ceiling.
+    // 190 seconds, just above the 180-second (3-minute) ceiling.
     await page.locator('input[type=file]').first().setInputFiles({
       name: 'long.wav',
       mimeType: 'audio/wav',
-      buffer: makeWav(70),
+      buffer: makeWav(190),
     });
 
     await expect(page.getByText(/above the current limit/i)).toBeVisible({ timeout: 30_000 });
-    await expect(page.getByText(/60 seconds/)).toBeVisible();
+    await expect(page.getByText(/180 seconds/)).toBeVisible();
     // Continue stays disabled, so inference can never start.
     await expect(page.getByRole('button', { name: 'Continue' })).toBeDisabled();
   });

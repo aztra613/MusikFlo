@@ -1,26 +1,95 @@
 {
+  "$schema": "https://json.schemastore.org/web-manifest-combined.json",
+  "id": "/",
   "name": "MusikFlo — Sheet Music Studio & Composer",
   "short_name": "MusikFlo",
   "description": "Visual music composition and playback studio. Compose on the staff, hear every note come alive with multi-instrument synthesis, and export your music.",
-  "start_url": "/",
+  "start_url": "/#studio",
+  "scope": "/",
   "display": "standalone",
-  "background_color": "#101715",
+  "orientation": "any",
   "theme_color": "#236D63",
+  "background_color": "#101715",
+  "lang": "en",
+  "dir": "ltr",
+  "categories": [
+    "music",
+    "education",
+    "utilities",
+    "productivity"
+  ],
+  "prefer_related_applications": false,
   "icons": [
     {
       "src": "/favicon.svg",
       "sizes": "any",
-      "type": "image/svg+xml"
-    },
-    {
-      "src": "/apple-touch-icon.png",
-      "sizes": "180x180",
-      "type": "image/png"
+      "type": "image/svg+xml",
+      "purpose": "any"
     },
     {
       "src": "/favicon-32x32.png",
       "sizes": "32x32",
-      "type": "image/png"
+      "type": "image/png",
+      "purpose": "any"
+    },
+    {
+      "src": "/apple-touch-icon.png",
+      "sizes": "180x180",
+      "type": "image/png",
+      "purpose": "any"
+    },
+    {
+      "src": "/icon-192.png",
+      "sizes": "192x192",
+      "type": "image/png",
+      "purpose": "any"
+    },
+    {
+      "src": "/icon-512.png",
+      "sizes": "512x512",
+      "type": "image/png",
+      "purpose": "any"
+    },
+    {
+      "src": "/icon-maskable-512.png",
+      "sizes": "512x512",
+      "type": "image/png",
+      "purpose": "maskable"
+    }
+  ],
+  "shortcuts": [
+    {
+      "name": "Open Studio",
+      "short_name": "Studio",
+      "description": "Open the visual score editor and playback studio",
+      "url": "/#studio",
+      "icons": [
+        {
+          "src": "/icon-192.png",
+          "sizes": "192x192"
+        }
+      ]
+    },
+    {
+      "name": "Transcribe Audio",
+      "short_name": "Transcribe",
+      "description": "Convert audio recordings (MP3/WAV) to sheet music",
+      "url": "/#transcribe",
+      "icons": [
+        {
+          "src": "/icon-192.png",
+          "sizes": "192x192"
+        }
+      ]
+    }
+  ],
+  "screenshots": [
+    {
+      "src": "/og-image.png",
+      "sizes": "1200x630",
+      "type": "image/png",
+      "form_factor": "wide",
+      "label": "MusikFlo Sheet Music Studio & Composer"
     }
   ]
 }
