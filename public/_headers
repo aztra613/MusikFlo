@@ -35,3 +35,7 @@
 
 /sitemap.xml
   Cache-Control: public, max-age=86400
+
+/google7bda09520a3ae315.html
+  Cache-Control: public, max-age=86400
+
