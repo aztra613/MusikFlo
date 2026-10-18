@@ -1,0 +1,9 @@
+# https://www.robotstxt.org/robotstxt.html
+User-agent: *
+Allow: /
+
+# Host
+Host: https://musikflo.pages.dev
+
+# Sitemaps
+Sitemap: https://musikflo.pages.dev/sitemap.xml

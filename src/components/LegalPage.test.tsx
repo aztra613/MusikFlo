@@ -49,9 +49,9 @@ describe('legal pages', () => {
     expect(screen.getByText(/never uploaded to us or to any third-party service/i)).toBeInTheDocument();
   });
 
-  it('states plainly that no contact channel is configured', () => {
+  it('states the official contact email for inquiries', () => {
     renderLegal('contact');
-    expect(screen.getByText(/no public support, privacy or legal contact address is configured/i)).toBeInTheDocument();
+    expect(screen.getAllByText(/zetaaztratech@gmail\.com/i).length).toBeGreaterThan(0);
   });
 
   it('does not claim an external security audit took place', () => {

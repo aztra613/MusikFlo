@@ -90,6 +90,11 @@ export function parseLocation(loc?: { pathname?: string; hash?: string }): Route
   const path = (current.pathname || '').replace(/^\/+|\/+$/g, '').toLowerCase();
   const hash = (current.hash || '').replace(/^#\/?/, '').trim().toLowerCase();
 
+  // If the user navigated to any specific destination hash (e.g. #home, #studio, #transcribe, legal pages), respect it!
+  if (hash && hash !== 'pravin' && !hash.startsWith('pravin')) {
+    return parseHash(current.hash || '');
+  }
+
   if (path === 'pravin' || path.startsWith('pravin/')) {
     return { name: 'pravin' };
   }

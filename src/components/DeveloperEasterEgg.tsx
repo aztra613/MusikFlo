@@ -8,12 +8,14 @@ interface DeveloperEasterEggProps {
   theme: 'light' | 'dark';
   onToggleTheme: () => void;
   onGoHome: () => void;
+  onOpenStudio: () => void;
 }
 
 export const DeveloperEasterEgg: React.FC<DeveloperEasterEggProps> = ({
   theme,
   onToggleTheme,
   onGoHome,
+  onOpenStudio,
 }) => {
   useEffect(() => {
     window.scrollTo({ top: 0, behavior: 'auto' });
@@ -24,7 +26,7 @@ export const DeveloperEasterEgg: React.FC<DeveloperEasterEggProps> = ({
       {/* Top Header */}
       <header className="sticky top-0 z-30 flex items-center justify-between gap-4 px-6 md:px-12 py-4 border-b border-border bg-app-bg/90 backdrop-blur-md">
         <a
-          href={hrefFor('landing')}
+          href="/#home"
           onClick={(e) => {
             e.preventDefault();
             onGoHome();
@@ -47,12 +49,13 @@ export const DeveloperEasterEgg: React.FC<DeveloperEasterEggProps> = ({
           >
             {theme === 'dark' ? <Sun size={18} /> : <Moon size={18} />}
           </button>
-          <a
-            href={hrefFor('studio')}
-            className="px-4 py-2 text-xs font-semibold rounded-lg bg-primary text-white hover:bg-primary-hover transition-colors shadow-sm"
+          <button
+            type="button"
+            onClick={onOpenStudio}
+            className="px-4 py-2 text-xs font-semibold rounded-lg bg-primary text-white hover:bg-primary-hover transition-colors shadow-sm cursor-pointer"
           >
             Open Studio
-          </a>
+          </button>
         </div>
       </header>
 
@@ -168,24 +171,31 @@ export const DeveloperEasterEgg: React.FC<DeveloperEasterEggProps> = ({
             <button
               type="button"
               onClick={onGoHome}
-              className="px-5 py-2.5 rounded-xl border border-border bg-surface text-text-primary text-xs font-semibold hover:bg-app-bg transition-colors"
+              className="px-5 py-2.5 rounded-xl border border-border bg-surface text-text-primary text-xs font-semibold hover:bg-app-bg transition-colors cursor-pointer"
             >
               Return to MusikFlo Home
             </button>
-            <a
-              href={hrefFor('studio')}
-              className="px-5 py-2.5 rounded-xl bg-primary text-white text-xs font-semibold hover:bg-primary-hover transition-colors shadow-sm"
+            <button
+              type="button"
+              onClick={onOpenStudio}
+              className="px-5 py-2.5 rounded-xl bg-primary text-white text-xs font-semibold hover:bg-primary-hover transition-colors shadow-sm cursor-pointer"
             >
               Open Studio Workspace
-            </a>
+            </button>
           </div>
         </div>
       </main>
 
-      <Footer onNavigate={(name) => {
-        if (name === 'landing') onGoHome();
-        else window.location.hash = hrefFor(name);
-      }} />
+      <Footer
+        onNavigate={(name) => {
+          if (name === 'landing') {
+            onGoHome();
+          } else {
+            window.history.pushState(null, '', `/#${name}`);
+            window.dispatchEvent(new PopStateEvent('popstate'));
+          }
+        }}
+      />
     </div>
   );
 };

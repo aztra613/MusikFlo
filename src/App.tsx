@@ -60,7 +60,9 @@ export default function App() {
 
   const navigate = useCallback((name: Parameters<typeof hrefFor>[0]) => {
     const next = hrefFor(name);
-    if (window.location.hash !== next) {
+    if (window.location.pathname !== '/' && window.location.pathname !== '') {
+      window.history.pushState(null, '', `/${next}`);
+    } else if (window.location.hash !== next) {
       window.location.hash = next;
     }
     setRoute(parseLocation());
@@ -204,6 +206,7 @@ export default function App() {
         theme={theme}
         onToggleTheme={toggleTheme}
         onGoHome={handleGoHome}
+        onOpenStudio={() => void handleStartComposing()}
       />
     );
   }

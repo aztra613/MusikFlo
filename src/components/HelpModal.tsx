@@ -26,7 +26,7 @@ const TOOLS: Array<[string, string]> = [
   ['Erase', 'Click a note or rest to delete it. Clicking empty staff does nothing.'],
 ];
 
-export const HelpModal: React.FC<HelpModalProps> = ({ isOpen, onClose }) => {
+export const HelpModal: React.FC<HelpModalProps> = ({ isOpen, onClose, onStartTutorial }) => {
   const dialogRef = useRef<HTMLDivElement>(null);
   const previouslyFocused = useRef<HTMLElement | null>(null);
 
