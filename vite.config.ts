@@ -21,6 +21,19 @@ export default defineConfig(() => {
       // Disable file watching when DISABLE_HMR is true to save CPU during agent edits.
       watch: process.env.DISABLE_HMR === 'true' ? null : {},
     },
+    build: {
+      rollupOptions: {
+        output: {
+          manualChunks(id) {
+            if (id.includes('node_modules/vexflow')) return 'vendor-vexflow';
+            if (id.includes('node_modules/tone')) return 'vendor-tone';
+            if (id.includes('node_modules/jspdf') || id.includes('node_modules/html2canvas')) return 'vendor-export';
+            if (id.includes('node_modules/@spotify/basic-pitch') || id.includes('node_modules/@tensorflow')) return 'vendor-transcribe';
+            if (id.includes('node_modules/react') || id.includes('node_modules/react-dom')) return 'vendor-react';
+          },
+        },
+      },
+    },
     test: {
       environment: 'jsdom',
       globals: false,

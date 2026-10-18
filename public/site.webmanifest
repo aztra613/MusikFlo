@@ -1,0 +1,26 @@
+{
+  "name": "MusikFlo — Sheet Music Studio & Composer",
+  "short_name": "MusikFlo",
+  "description": "Visual music composition and playback studio. Compose on the staff, hear every note come alive with multi-instrument synthesis, and export your music.",
+  "start_url": "/",
+  "display": "standalone",
+  "background_color": "#101715",
+  "theme_color": "#236D63",
+  "icons": [
+    {
+      "src": "/favicon.svg",
+      "sizes": "any",
+      "type": "image/svg+xml"
+    },
+    {
+      "src": "/apple-touch-icon.png",
+      "sizes": "180x180",
+      "type": "image/png"
+    },
+    {
+      "src": "/favicon-32x32.png",
+      "sizes": "32x32",
+      "type": "image/png"
+    }
+  ]
+}
