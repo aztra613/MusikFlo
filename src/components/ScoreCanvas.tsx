@@ -88,6 +88,7 @@ export const ScoreCanvas: React.FC<ScoreCanvasProps> = ({
 }) => {
   const containerRef = useRef<HTMLDivElement>(null);
   const svgRef = useRef<SVGSVGElement | null>(null);
+  const viewportRef = useRef<HTMLDivElement>(null);
 
   const [zoomLevel, setZoomLevel] = useState(1);
   const [hoveredNoteId, setHoveredNoteId] = useState<string | null>(null);
@@ -386,6 +387,53 @@ export const ScoreCanvas: React.FC<ScoreCanvasProps> = ({
 
   const scale = (n: number) => n * zoomLevel;
 
+  // Auto-scroll viewport smoothly during playback so the active measure remains in view
+  useEffect(() => {
+    if (!activePlayhead?.isPlaying || !viewportRef.current) return;
+    const viewport = viewportRef.current;
+    const rect = getMeasureRect(activePlayhead.measureIndex, layout);
+
+    const measureLeft = rect.x * zoomLevel;
+    const measureRight = (rect.x + rect.width) * zoomLevel;
+    const measureTop = rect.y * zoomLevel;
+    const measureBottom = (rect.y + rect.height) * zoomLevel;
+
+    const clientW = viewport.clientWidth;
+    const clientH = viewport.clientHeight;
+    const scrollL = viewport.scrollLeft;
+    const scrollT = viewport.scrollTop;
+
+    let targetScrollX = scrollL;
+    let targetScrollY = scrollT;
+    let needsScroll = false;
+
+    // Horizontal check
+    if (measureLeft < scrollL + 40) {
+      targetScrollX = Math.max(0, measureLeft - 40);
+      needsScroll = true;
+    } else if (measureRight > scrollL + clientW - 40) {
+      targetScrollX = Math.max(0, measureRight - clientW + 60);
+      needsScroll = true;
+    }
+
+    // Vertical check
+    if (measureTop < scrollT + 40) {
+      targetScrollY = Math.max(0, measureTop - 40);
+      needsScroll = true;
+    } else if (measureBottom > scrollT + clientH - 40) {
+      targetScrollY = Math.max(0, measureBottom - clientH + 60);
+      needsScroll = true;
+    }
+
+    if (needsScroll) {
+      viewport.scrollTo({
+        left: targetScrollX,
+        top: targetScrollY,
+        behavior: 'smooth',
+      });
+    }
+  }, [activePlayhead?.measureIndex, activePlayhead?.isPlaying, layout, zoomLevel]);
+
   return (
     <div className="relative flex flex-col w-full h-full select-none">
       {/* Canvas toolbar: selection context + zoom */}
@@ -478,6 +526,7 @@ export const ScoreCanvas: React.FC<ScoreCanvasProps> = ({
           room and grows to the left origin once the score is wider, keeping every
           part of a long score scrollable into view. */}
       <div
+        ref={viewportRef}
         className="relative flex-1 overflow-auto bg-paper transition-colors duration-150 touch-manipulation"
         onPointerMove={handlePointerMove}
         onPointerLeave={handlePointerLeave}

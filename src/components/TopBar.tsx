@@ -15,6 +15,7 @@ import {
   FileAudio,
   History,
   Printer,
+  LayoutTemplate,
 } from 'lucide-react';
 import {
   downloadBlob,
@@ -27,6 +28,7 @@ import {
 } from '../export/exporter';
 import { validateImportedScore } from '../utils/importValidation';
 import { listProjects } from '../storage/db';
+import { STARTER_TEMPLATES, StarterTemplate } from '../data/samples';
 
 export type SaveStatus = 'saved' | 'saving' | 'unsaved' | 'error';
 
@@ -80,12 +82,20 @@ export const TopBar: React.FC<TopBarProps> = ({
   const [tempTitle, setTempTitle] = useState(score.title);
   const [isExportOpen, setIsExportOpen] = useState(false);
   const [isRecentOpen, setIsRecentOpen] = useState(false);
+  const [isTemplatesOpen, setIsTemplatesOpen] = useState(false);
   const [recentProjects, setRecentProjects] = useState<
     Array<{ id: string; title: string; updatedAt: number; measuresCount: number }>
   >([]);
   const [busyExport, setBusyExport] = useState<'wav' | 'pdf' | null>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
   const menuRef = useRef<HTMLDivElement>(null);
+
+  const handleSelectTemplate = (template: StarterTemplate) => {
+    setIsTemplatesOpen(false);
+    const newScore = template.getScore();
+    onImportScore(newScore);
+    onNotify(`Loaded template: “${template.name}”.`, 'success');
+  };
 
   useEffect(() => {
     if (!isExportOpen) return;
@@ -272,11 +282,60 @@ export const TopBar: React.FC<TopBarProps> = ({
           type="button"
           onClick={onNewScore}
           className="flex items-center gap-1.5 py-1 px-2.5 rounded-md text-xs font-medium text-text-secondary hover:text-text-primary hover:bg-app-bg transition-colors"
-          title="Start a new composition"
+          title="Start a blank composition"
         >
           <FilePlus size={14} />
           <span>New</span>
         </button>
+
+        <div className="relative">
+          <button
+            type="button"
+            onClick={() => setIsTemplatesOpen((open) => !open)}
+            className="flex items-center gap-1.5 py-1 px-2.5 rounded-md text-xs font-medium text-text-secondary hover:text-text-primary hover:bg-app-bg transition-colors"
+            title="Start from a template melody or chord progression"
+            aria-expanded={isTemplatesOpen}
+            aria-haspopup="menu"
+          >
+            <LayoutTemplate size={14} />
+            <span>Templates</span>
+            <ChevronDown size={11} className={`transition-transform ${isTemplatesOpen ? 'rotate-180' : ''}`} />
+          </button>
+
+          {isTemplatesOpen && (
+            <>
+              <div className="fixed inset-0 z-40" onClick={() => setIsTemplatesOpen(false)} aria-hidden="true" />
+              <div
+                role="menu"
+                className="absolute left-0 mt-2 w-72 max-h-96 overflow-y-auto rounded-xl bg-surface-raised border border-border shadow-xl z-50 p-1.5 flex flex-col gap-1 text-xs"
+              >
+                <div className="px-2.5 py-1.5 border-b border-border/60 flex items-center justify-between text-[11px] font-semibold text-text-muted uppercase tracking-wider">
+                  <span>Starter Templates</span>
+                  <span className="text-[10px] font-normal lowercase">{STARTER_TEMPLATES.length} presets</span>
+                </div>
+                {STARTER_TEMPLATES.map((tmpl) => (
+                  <button
+                    key={tmpl.id}
+                    type="button"
+                    role="menuitem"
+                    onClick={() => handleSelectTemplate(tmpl)}
+                    className="flex flex-col items-start gap-0.5 p-2 rounded-lg text-left transition-colors hover:bg-app-bg group"
+                  >
+                    <div className="flex items-center justify-between w-full">
+                      <span className="font-semibold text-text-primary group-hover:text-primary transition-colors">
+                        {tmpl.name}
+                      </span>
+                      <span className="text-[10px] px-1.5 py-0.5 rounded bg-surface border border-border font-medium text-text-muted">
+                        {tmpl.timeSignature} · {tmpl.tempo} BPM
+                      </span>
+                    </div>
+                    <span className="text-[11px] text-text-muted leading-tight">{tmpl.description}</span>
+                  </button>
+                ))}
+              </div>
+            </>
+          )}
+        </div>
 
         <button
           type="button"
