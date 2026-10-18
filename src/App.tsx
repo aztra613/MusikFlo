@@ -3,11 +3,12 @@ import { LandingPage } from './components/LandingPage';
 import { Studio } from './components/Studio';
 import { LegalPage } from './components/LegalPage';
 import { TranscribePage } from './components/TranscribePage';
+import { DeveloperEasterEgg } from './components/DeveloperEasterEgg';
 import { Score } from './types/music';
 import { SAMPLE_ODE_TO_JOY, createBlankScore } from './data/samples';
 import { loadLatestDraft } from './storage/db';
 import { LEGAL_DOCUMENTS } from './content/legal';
-import { Route, hrefFor, isLegalRoute, parseHash } from './routing/routes';
+import { Route, hrefFor, isLegalRoute, parseHash, parseLocation } from './routing/routes';
 
 const THEME_KEY = 'musikflo_theme';
 
@@ -31,7 +32,7 @@ export default function App() {
   // Always default to 'light' mode for new visitors. Only use 'dark' if the user explicitly chose it previously.
   const [theme, setTheme] = useState<'light' | 'dark'>(() => readStoredTheme() ?? 'light');
 
-  const [route, setRoute] = useState<Route>(() => parseHash(window.location.hash));
+  const [route, setRoute] = useState<Route>(() => parseLocation());
   const [entry, setEntry] = useState<StudioEntry | null>(null);
   /** The most recently edited score, so leaving and re-entering the studio
    *  restores the live work rather than a stale recovered draft. */
@@ -62,13 +63,17 @@ export default function App() {
     if (window.location.hash !== next) {
       window.location.hash = next;
     }
-    setRoute(parseHash(next));
+    setRoute(parseLocation());
   }, []);
 
   useEffect(() => {
-    const onHashChange = () => setRoute(parseHash(window.location.hash));
-    window.addEventListener('hashchange', onHashChange);
-    return () => window.removeEventListener('hashchange', onHashChange);
+    const onLocationChange = () => setRoute(parseLocation());
+    window.addEventListener('hashchange', onLocationChange);
+    window.addEventListener('popstate', onLocationChange);
+    return () => {
+      window.removeEventListener('hashchange', onLocationChange);
+      window.removeEventListener('popstate', onLocationChange);
+    };
   }, []);
 
   // Landing section anchors are in-page scrolls, not separate routes.
@@ -189,6 +194,16 @@ export default function App() {
         // A transcription always becomes a brand-new project, so the composition
         // held in memory is left untouched until the user opens the result.
         onAccept={(score) => openStudio(score)}
+      />
+    );
+  }
+
+  if (route.name === 'pravin') {
+    return (
+      <DeveloperEasterEgg
+        theme={theme}
+        onToggleTheme={toggleTheme}
+        onGoHome={handleGoHome}
       />
     );
   }

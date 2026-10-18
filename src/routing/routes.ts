@@ -18,7 +18,8 @@ export type RouteName =
   | 'contact'
   | 'licenses'
   | 'accessibility'
-  | 'security';
+  | 'security'
+  | 'pravin';
 
 export const LEGAL_ROUTE_NAMES = [
   'privacy',
@@ -57,6 +58,7 @@ const ROUTE_NAMES: RouteName[] = [
   'licenses',
   'accessibility',
   'security',
+  'pravin',
 ];
 
 /**
@@ -64,7 +66,7 @@ const ROUTE_NAMES: RouteName[] = [
  * landing page so the rendered view can never disagree with the URL.
  */
 export function parseHash(hash: string): Route {
-  const raw = (hash || '').replace(/^#/, '').trim().toLowerCase();
+  const raw = (hash || '').replace(/^#\/?/, '').trim().toLowerCase();
 
   if (!raw || raw === 'home') return { name: 'landing' };
 
@@ -78,8 +80,31 @@ export function parseHash(hash: string): Route {
   return { name: 'landing' };
 }
 
+/**
+ * Resolve the current window.location (both pathname and hash) into a route.
+ * Ensures easter egg routes like /pravin resolve correctly whether visited as /pravin or /#pravin.
+ */
+export function parseLocation(loc?: { pathname?: string; hash?: string }): Route {
+  if (typeof window === 'undefined') return { name: 'landing' };
+  const current = loc ?? window.location;
+  const path = (current.pathname || '').replace(/^\/+|\/+$/g, '').toLowerCase();
+  const hash = (current.hash || '').replace(/^#\/?/, '').trim().toLowerCase();
+
+  if (path === 'pravin' || path.startsWith('pravin/')) {
+    return { name: 'pravin' };
+  }
+
+  if (hash === 'pravin' || hash.startsWith('pravin')) {
+    return { name: 'pravin' };
+  }
+
+  return parseHash(current.hash || '');
+}
+
 export function hrefFor(name: RouteName): string {
-  return name === 'landing' ? '#home' : `#${name}`;
+  if (name === 'landing') return '#home';
+  if (name === 'pravin') return '#pravin';
+  return `#${name}`;
 }
 
 /** Real destinations for the footer, in the order required by the design brief. */

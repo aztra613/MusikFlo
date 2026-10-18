@@ -1,9 +1,10 @@
 import React, { useEffect, useRef } from 'react';
-import { X, BookOpen, Keyboard, ShieldCheck, Music, MousePointer2 } from 'lucide-react';
+import { X, BookOpen, Keyboard, ShieldCheck, Music, MousePointer2, GraduationCap } from 'lucide-react';
 
 interface HelpModalProps {
   isOpen: boolean;
   onClose: () => void;
+  onStartTutorial?: () => void;
 }
 
 const SHORTCUTS: Array<[string, string]> = [
@@ -213,7 +214,22 @@ export const HelpModal: React.FC<HelpModalProps> = ({ isOpen, onClose }) => {
           </section>
         </div>
 
-        <div className="px-6 py-3 border-t border-border bg-surface flex justify-end">
+        <div className="px-6 py-3 border-t border-border bg-surface flex items-center justify-between">
+          {onStartTutorial ? (
+            <button
+              type="button"
+              onClick={() => {
+                onClose();
+                onStartTutorial();
+              }}
+              className="flex items-center gap-1.5 px-3 py-1.5 text-xs font-semibold rounded-lg bg-primary-soft text-primary hover:bg-primary hover:text-white transition-colors"
+            >
+              <GraduationCap size={15} />
+              Take Quick Studio Tour
+            </button>
+          ) : (
+            <span />
+          )}
           <button
             type="button"
             onClick={onClose}

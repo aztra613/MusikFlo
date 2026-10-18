@@ -28,6 +28,7 @@ import { Inspector } from './Inspector';
 import { TransportDock } from './TransportDock';
 import { HelpModal } from './HelpModal';
 import { AudioToScoreFlow } from './AudioToScoreFlow';
+import { WelcomeTutorial, shouldShowTutorial } from './WelcomeTutorial';
 import { Sparkles, SlidersHorizontal, X, AudioLines, MousePointer2, Music, Eraser } from 'lucide-react';
 
 interface StudioProps {
@@ -118,6 +119,7 @@ export const Studio: React.FC<StudioProps> = ({ initialScore, theme, onToggleThe
   const [toasts, setToasts] = useState<Toast[]>([]);
   const [isHelpOpen, setIsHelpOpen] = useState(false);
   const [isTranscribeOpen, setIsTranscribeOpen] = useState(false);
+  const [isTutorialOpen, setIsTutorialOpen] = useState(() => shouldShowTutorial());
   const [showFirstRunHint, setShowFirstRunHint] = useState(() => {
     try {
       return !localStorage.getItem('musikflo_dismissed_hint');
@@ -837,7 +839,15 @@ export const Studio: React.FC<StudioProps> = ({ initialScore, theme, onToggleThe
         </div>
       )}
 
-      <HelpModal isOpen={isHelpOpen} onClose={() => setIsHelpOpen(false)} />
+      <WelcomeTutorial isOpen={isTutorialOpen} onClose={() => setIsTutorialOpen(false)} />
+      <HelpModal
+        isOpen={isHelpOpen}
+        onClose={() => setIsHelpOpen(false)}
+        onStartTutorial={() => {
+          setIsHelpOpen(false);
+          setIsTutorialOpen(true);
+        }}
+      />
 
       {/* Audio to sheet music. Rendered as an overlay so the open composition
           and its undo history are never unmounted while transcribing. */}

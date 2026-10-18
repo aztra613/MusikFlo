@@ -214,30 +214,24 @@ export const LEGAL_DOCUMENTS: Record<LegalRouteName, LegalDocument> = {
   contact: {
     route: 'contact',
     title: 'Contact',
-    summary: 'How to reach the MusikFlo team, and the current state of that channel.',
+    summary: 'How to reach the MusikFlo team and Aztras AI Tech Solutions.',
     sections: [
       {
-        heading: 'No public contact channel is configured yet',
+        heading: 'Get in Touch',
         paragraphs: [
-          `MusikFlo is published by ${OWNER}. No public support, privacy or legal contact address is configured in this build, and this page deliberately does not invent one.`,
+          'For feedback, support inquiries, collaboration proposals, or issue reports, you can reach us directly by email:',
+          'zetaaztratech@gmail.com',
         ],
         callout:
-          'Before public release, add a monitored support address, a privacy contact and a security reporting contact, and update this page and the Privacy page to point at them.',
+          'Messages are monitored regularly. When submitting a bug or technical issue, please mention your browser, operating system, and steps to reproduce.',
       },
       {
-        heading: 'Before you publish this build',
-        bullets: [
-          'Decide who monitors incoming reports and how quickly they are expected to respond.',
-          'Add the addresses to the product configuration so this page, the Privacy page and the Security page all show the same verified details.',
-          'If MusikFlo is offered commercially, confirm the correct legal entity name, its registered address and any registration or tax identifiers that must appear in a legal notice.',
-        ],
-      },
-      {
-        heading: 'About this project',
+        heading: 'Product & Organization',
         bullets: [
           `Product: MusikFlo · ${PRODUCT_VERSION}`,
           `Publisher: ${OWNER}`,
-          'Model: static browser application, no accounts, no server-side storage of user work.',
+          'Primary Contact: zetaaztratech@gmail.com',
+          'Architecture: 100% browser-native composition and synthesis with zero server storage of user music.',
         ],
       },
     ],
@@ -334,7 +328,7 @@ export const LEGAL_DOCUMENTS: Record<LegalRouteName, LegalDocument> = {
       {
         heading: 'Feedback',
         paragraphs: [
-          'Accessibility reports are welcome. Because no public contact channel is configured yet, add a monitored address before release and it will be listed here and on the Contact page.',
+          'Accessibility reports, suggestions, and feedback are always welcome. Please email us at zetaaztratech@gmail.com with your feedback.',
         ],
       },
     ],
