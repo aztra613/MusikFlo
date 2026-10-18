@@ -61,7 +61,7 @@ export interface TranscriptionProgress {
 }
 
 /** Rhythm grid offered during review. */
-export type QuantiseGrid = 'auto' | '8' | '16';
+export type QuantiseGrid = 'auto' | '4' | '8' | '16';
 
 /** Settings the user controls before the score is built. */
 export interface TranscriptionSettings {

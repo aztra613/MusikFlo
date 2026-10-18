@@ -20,10 +20,6 @@ function readStoredTheme(): 'light' | 'dark' | null {
   }
 }
 
-function systemPrefersDark(): boolean {
-  return typeof window !== 'undefined' && !!window.matchMedia?.('(prefers-color-scheme: dark)').matches;
-}
-
 interface StudioEntry {
   /** Score handed to the studio on mount. */
   score: Score;
@@ -32,10 +28,8 @@ interface StudioEntry {
 }
 
 export default function App() {
-  const [theme, setTheme] = useState<'light' | 'dark'>(() => readStoredTheme() ?? (systemPrefersDark() ? 'dark' : 'light'));
-  /** Tracks whether the user has made an explicit choice, so the OS preference
-   *  can still be followed until then. */
-  const hasExplicitTheme = useRef(readStoredTheme() !== null);
+  // Always default to 'light' mode for new visitors. Only use 'dark' if the user explicitly chose it previously.
+  const [theme, setTheme] = useState<'light' | 'dark'>(() => readStoredTheme() ?? 'light');
 
   const [route, setRoute] = useState<Route>(() => parseHash(window.location.hash));
   const [entry, setEntry] = useState<StudioEntry | null>(null);
@@ -57,21 +51,7 @@ export default function App() {
     }
   }, [theme]);
 
-  // Follow the OS preference until the user chooses a theme themselves.
-  useEffect(() => {
-    const media = window.matchMedia?.('(prefers-color-scheme: dark)');
-    if (!media) return;
-
-    const onChange = (event: MediaQueryListEvent) => {
-      if (!hasExplicitTheme.current) setTheme(event.matches ? 'dark' : 'light');
-    };
-
-    media.addEventListener('change', onChange);
-    return () => media.removeEventListener('change', onChange);
-  }, []);
-
   const toggleTheme = useCallback(() => {
-    hasExplicitTheme.current = true;
     setTheme((prev) => (prev === 'light' ? 'dark' : 'light'));
   }, []);
 

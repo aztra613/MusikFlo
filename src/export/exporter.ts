@@ -281,60 +281,158 @@ export async function exportScoreToWav(score: Score, filename: string): Promise<
  *  - it also reused the on-screen colours, so in dark mode the near-white
  *    notation ink was invisible on white PDF paper.
  */
+/**
+ * Distribute rows evenly across pages, avoiding orphan rows on the last page.
+ * Exported so unit tests can verify the pagination logic.
+ */
+export function computePdfPageRowBatches(totalRowCount: number): number[][] {
+  if (totalRowCount <= 0) return [[]];
+  if (totalRowCount <= 5) {
+    return [Array.from({ length: totalRowCount }, (_, i) => i)];
+  }
+
+  const TARGET_PER_PAGE = 4;
+  const pageCount = Math.ceil(totalRowCount / TARGET_PER_PAGE);
+  const rowsPerPage = Math.ceil(totalRowCount / pageCount);
+
+  const pages: number[][] = [];
+  let row = 0;
+  for (let p = 0; p < pageCount; p++) {
+    const pageRows: number[] = [];
+    const count = p === pageCount - 1 ? totalRowCount - row : Math.min(rowsPerPage, totalRowCount - row);
+    for (let i = 0; i < count; i++) {
+      pageRows.push(row++);
+    }
+    if (pageRows.length > 0) {
+      pages.push(pageRows);
+    }
+  }
+  return pages;
+}
+
+/**
+ * Render the score to a multi-page, publication-grade printable PDF in standard
+ * Portrait A4 format.
+ *
+ * Rather than cramming an entire multi-system score onto one page (which reduces
+ * 16-32 measure scores to unreadable microscopic strips), this paginates the score
+ * into comfortable 3–5 system batches per page. Every system spans the full printable
+ * width of the page, ensuring crystal-clear readability on a music stand or piano.
+ */
 export async function exportScoreToPdf(score: Score, filename: string): Promise<void> {
-  const doc = new jsPDF({ orientation: 'landscape', unit: 'pt', format: 'a4' });
-  const pageWidth = doc.internal.pageSize.getWidth();
-  const pageHeight = doc.internal.pageSize.getHeight();
+  const doc = new jsPDF({ orientation: 'portrait', unit: 'pt', format: 'a4' });
+  const pageWidth = doc.internal.pageSize.getWidth(); // 595.28 pt
+  const pageHeight = doc.internal.pageSize.getHeight(); // 841.89 pt
 
-  doc.setFillColor(255, 253, 247);
-  doc.rect(0, 0, pageWidth, pageHeight, 'F');
+  const marginX = 36; // 0.5 inch margins
+  const printableWidth = pageWidth - marginX * 2; // 523.28 pt
 
-  doc.setTextColor(25, 37, 34);
-  doc.setFont('times', 'bold');
-  doc.setFontSize(22);
-  doc.text(score.title || 'Untitled Composition', pageWidth / 2, 48, { align: 'center' });
-
-  doc.setFont('times', 'italic');
-  doc.setFontSize(11);
-  doc.text(score.composer ? `Composed by ${score.composer}` : 'MusikFlo Studio', pageWidth / 2, 65, { align: 'center' });
-
-  doc.setFont('helvetica', 'normal');
-  doc.setFontSize(9);
-  doc.setTextColor(116, 129, 124);
-  doc.text(
-    `${score.clef === 'treble' ? 'Treble Clef' : 'Bass Clef'}   ·   Time Signature: ${score.timeSignature.numerator}/${
-      score.timeSignature.denominator
-    }   ·   Tempo: ${score.tempo || 100} BPM   ·   Key: ${score.keySignature || 'C'}`,
-    pageWidth / 2,
-    80,
-    { align: 'center' }
-  );
-
-  const { canvas, width, height } = renderScoreToCanvas(score);
+  const { canvas, width } = renderScoreToCanvas(score, 2.5);
   if (!canvas) {
     throw new Error('The score could not be engraved for PDF export. Try again once the notation has rendered.');
   }
 
-  const imageData = canvas.toDataURL('image/png');
-  const maxRenderW = pageWidth - 60;
-  const maxRenderH = pageHeight - 130;
-  const aspect = width / Math.max(1, height);
+  const pixelRatio = canvas.width / Math.max(1, width);
+  const scale = printableWidth / Math.max(1, width);
+  const rowHeightPt = DEFAULT_LAYOUT.staveHeight * scale;
 
-  let renderW = maxRenderW;
-  let renderH = renderW / aspect;
-  if (renderH > maxRenderH) {
-    renderH = maxRenderH;
-    renderW = renderH * aspect;
-  }
+  const totalRowCount = Math.ceil(Math.max(1, score.measures.length) / DEFAULT_LAYOUT.measuresPerRow);
+  const pageRowBatches = computePdfPageRowBatches(totalRowCount);
+  const totalPages = pageRowBatches.length;
 
-  // 'FAST' (Deflate) keeps the file small: the raster is line art, which
-  // compresses extremely well. Uncompressed it would be several megabytes.
-  doc.addImage(imageData, 'PNG', (pageWidth - renderW) / 2, 95, renderW, renderH, undefined, 'FAST');
+  pageRowBatches.forEach((pageRows, pageIndex) => {
+    if (pageIndex > 0) {
+      doc.addPage();
+    }
 
-  doc.setFont('helvetica', 'normal');
-  doc.setFontSize(8);
-  doc.setTextColor(150, 160, 155);
-  doc.text('Engraved with MusikFlo — Sheet Music Studio & Composer', 30, pageHeight - 20);
+    // Warm cream paper background
+    doc.setFillColor(255, 253, 247);
+    doc.rect(0, 0, pageWidth, pageHeight, 'F');
+
+    const isFirstPage = pageIndex === 0;
+
+    if (isFirstPage) {
+      // Primary Title & Meta Header (Page 1)
+      doc.setTextColor(25, 37, 34);
+      doc.setFont('times', 'bold');
+      doc.setFontSize(22);
+      doc.text(score.title || 'Untitled Composition', pageWidth / 2, 44, { align: 'center' });
+
+      doc.setFont('times', 'italic');
+      doc.setFontSize(11);
+      doc.setTextColor(60, 75, 70);
+      doc.text(
+        score.composer ? `Composed by ${score.composer}` : 'MusikFlo Studio',
+        pageWidth / 2,
+        60,
+        { align: 'center' }
+      );
+
+      doc.setFont('helvetica', 'normal');
+      doc.setFontSize(8.5);
+      doc.setTextColor(116, 129, 124);
+      doc.text(
+        `${score.clef === 'treble' ? 'Treble Clef' : 'Bass Clef'}   ·   Time Signature: ${score.timeSignature.numerator}/${
+          score.timeSignature.denominator
+        }   ·   Tempo: ${score.tempo || 100} BPM   ·   Key: ${score.keySignature || 'C'}`,
+        pageWidth / 2,
+        74,
+        { align: 'center' }
+      );
+    } else {
+      // Running Header (Pages 2+)
+      doc.setFont('times', 'italic');
+      doc.setFontSize(10);
+      doc.setTextColor(70, 85, 80);
+      doc.text(score.title || 'Untitled Composition', marginX, 34);
+
+      if (score.composer) {
+        doc.setFont('times', 'normal');
+        doc.setFontSize(9);
+        doc.setTextColor(120, 130, 125);
+        doc.text(score.composer, pageWidth - marginX, 34, { align: 'right' });
+      }
+
+      doc.setDrawColor(220, 225, 222);
+      doc.setLineWidth(0.5);
+      doc.line(marginX, 40, pageWidth - marginX, 40);
+    }
+
+    if (pageRows.length > 0) {
+      const rStart = pageRows[0];
+      const rowCount = pageRows.length;
+      const yScoreStart = DEFAULT_LAYOUT.startY + rStart * DEFAULT_LAYOUT.staveHeight;
+      const yScoreHeight = rowCount * DEFAULT_LAYOUT.staveHeight;
+
+      const sX = 0;
+      const sY = Math.round(yScoreStart * pixelRatio);
+      const sW = canvas.width;
+      const sH = Math.min(canvas.height - sY, Math.round(yScoreHeight * pixelRatio));
+
+      const pageCanvas = document.createElement('canvas');
+      pageCanvas.width = sW;
+      pageCanvas.height = sH;
+      const pctx = pageCanvas.getContext('2d');
+      if (pctx) {
+        pctx.fillStyle = PRINT_PAPER;
+        pctx.fillRect(0, 0, sW, sH);
+        pctx.drawImage(canvas, sX, sY, sW, sH, 0, 0, sW, sH);
+      }
+
+      const renderW = printableWidth;
+      const renderH = rowCount * rowHeightPt;
+      const renderY = isFirstPage ? 88 : 50;
+
+      doc.addImage(pageCanvas.toDataURL('image/png'), 'PNG', marginX, renderY, renderW, renderH, undefined, 'FAST');
+    }
+
+    // Professional Publishing Footer
+    doc.setFont('helvetica', 'normal');
+    doc.setFontSize(8);
+    doc.setTextColor(150, 160, 155);
+    doc.text('Engraved with MusikFlo — Sheet Music Studio & Composer', marginX, pageHeight - 20);
+    doc.text(`Page ${pageIndex + 1} of ${totalPages}`, pageWidth - marginX, pageHeight - 20, { align: 'right' });
+  });
 
   doc.save(filename);
 }

@@ -42,7 +42,8 @@ const EIGHTH_TICKS = TICKS_PER_QUARTER / 2; // 480
 
 export const QUANTISE_GRIDS: Array<{ id: QuantiseGrid; label: string; description: string }> = [
   { id: 'auto', label: 'Automatic', description: 'Picks a grid from the detected note spacing.' },
-  { id: '8', label: 'Eighth notes', description: 'Coarser rhythm; simpler notation.' },
+  { id: '4', label: 'Quarter notes', description: 'Cleanest rhythm; ideal for slow melodies, vocals, or raga tracks.' },
+  { id: '8', label: 'Eighth notes', description: 'Coarser rhythm; removes microtonal jitters and gamakas.' },
   { id: '16', label: 'Sixteenth notes', description: 'Finer rhythm; follows faster passages.' },
 ];
 
@@ -78,6 +79,7 @@ export function nearestValue(ticks: number, minimum: number): number {
 
 /** Choose the tick resolution for onset snapping. */
 export function resolveGridTicks(grid: QuantiseGrid, events: RawNoteEvent[], bpm: number): number {
+  if (grid === '4') return TICKS_PER_QUARTER;
   if (grid === '8') return EIGHTH_TICKS;
   if (grid === '16') return MIN_VALUE_TICKS;
 

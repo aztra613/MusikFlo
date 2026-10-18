@@ -169,16 +169,18 @@ export function renderScoreInto(container: HTMLDivElement, options: RenderScoreO
       const rect = getMeasureRect(mIdx, layout);
       const stave = new Stave(rect.x, rect.y, rect.width);
 
-      if (rect.col === 0) stave.addClef(score.clef);
-      if (mIdx === 0 || score.showTimeSigOnEveryBar) {
-        stave.addTimeSignature(`${score.timeSignature.numerator}/${score.timeSignature.denominator}`);
-        if (mIdx === 0 && score.keySignature && score.keySignature !== 'C') {
+      if (rect.col === 0) {
+        stave.addClef(score.clef);
+        if (score.keySignature && score.keySignature !== 'C') {
           try {
             stave.addKeySignature(score.keySignature);
           } catch {
             // Ignore an unsupported key signature rather than failing the render.
           }
         }
+      }
+      if (mIdx === 0 || score.showTimeSigOnEveryBar) {
+        stave.addTimeSignature(`${score.timeSignature.numerator}/${score.timeSignature.denominator}`);
       }
 
       // Ledger lines default to a hard-coded '#444', invisible on dark paper.

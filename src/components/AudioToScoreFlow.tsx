@@ -42,6 +42,7 @@ import {
   Music4,
   RotateCcw,
   ShieldCheck,
+  Sparkles,
   Upload,
   X,
 } from 'lucide-react';
@@ -489,6 +490,13 @@ export const AudioToScoreFlow: React.FC<AudioToScoreFlowProps> = ({
               <p className="text-xs text-primary leading-relaxed">
                 Melody-focused transcription. Settings below shape the notation; you can change them again after
                 analysing without re-running the model.
+              </p>
+            </div>
+
+            <div className="flex items-start gap-2.5 p-3 rounded-lg bg-surface border border-brass/30">
+              <Sparkles size={15} className="text-brass mt-0.5 shrink-0" aria-hidden="true" />
+              <p className="text-xs text-text-secondary leading-relaxed">
+                <strong className="text-text-primary">Vocal, solo, or Indian classical (raga) audio:</strong> Set the Tempo (BPM) to match your song's pulse, and select <strong className="text-text-primary">Eighth notes</strong> or <strong className="text-text-primary">Quarter notes</strong> in the Rhythm grid to filter out vibrato, pitch glides (gamakas/meend), and microtonal jitter.
               </p>
             </div>
 

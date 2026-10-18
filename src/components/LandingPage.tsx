@@ -308,6 +308,11 @@ export const LandingPage: React.FC<LandingPageProps> = ({
               initial={prefersReducedMotion ? undefined : 'hidden'}
               animate={prefersReducedMotion ? undefined : 'show'}
             >
+              <motion.div variants={HERO_ITEM} className="inline-flex items-center gap-2 px-3.5 py-1.5 rounded-full bg-primary-soft/80 border border-primary/30 text-xs font-semibold text-primary w-fit">
+                <Sparkles size={14} className="shrink-0" aria-hidden="true" />
+                <span>100% Free · No Login Required · Instant In-Browser Access</span>
+              </motion.div>
+
               <motion.h1
                 variants={HERO_ITEM}
                 className="font-serif text-5xl sm:text-6xl lg:text-7xl font-bold tracking-tight text-text-primary leading-[1.08] text-balance"
@@ -352,11 +357,14 @@ export const LandingPage: React.FC<LandingPageProps> = ({
                 </motion.button>
               </motion.div>
 
-              <motion.div variants={HERO_ITEM} className="flex flex-wrap items-center gap-x-2 gap-y-1 text-xs text-text-muted pt-1">
+              <motion.div variants={HERO_ITEM} className="flex flex-wrap items-center gap-x-3 gap-y-1.5 text-xs sm:text-sm font-medium text-text-secondary pt-1">
+                <span className="flex items-center gap-1.5 font-semibold text-primary">
+                  <span className="w-2 h-2 rounded-full bg-success"></span>
+                  No Login Needed
+                </span>
+                <span aria-hidden="true" className="text-border">·</span>
                 <span>Free to use</span>
-                <span aria-hidden="true">·</span>
-                <span>No account required</span>
-                <span aria-hidden="true">·</span>
+                <span aria-hidden="true" className="text-border">·</span>
                 <span>Your projects stay in your browser</span>
               </motion.div>
             </motion.div>

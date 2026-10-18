@@ -1,5 +1,11 @@
 import { describe, expect, it } from 'vitest';
-import { exportToMidi, exportToMusicXml, keySignatureFifths, safeFilename } from './exporter';
+import {
+  computePdfPageRowBatches,
+  exportToMidi,
+  exportToMusicXml,
+  keySignatureFifths,
+  safeFilename,
+} from './exporter';
 import { Score, TICKS_PER_QUARTER, getEventTicks } from '../types/music';
 
 function baseScore(events: Score['measures'][number]['events'], extra: Partial<Score> = {}): Score {
@@ -223,5 +229,33 @@ describe('exportToMidi', () => {
 
     expect(parsed.ticksPerQuarter).toBeGreaterThan(0);
     expect(scoreTicks).toBeCloseTo(expectedTicks, 6);
+  });
+});
+
+describe('computePdfPageRowBatches', () => {
+  it('fits short scores (<= 5 rows) onto a single page', () => {
+    expect(computePdfPageRowBatches(1)).toEqual([[0]]);
+    expect(computePdfPageRowBatches(3)).toEqual([[0, 1, 2]]);
+    expect(computePdfPageRowBatches(5)).toEqual([[0, 1, 2, 3, 4]]);
+  });
+
+  it('balances multi-page scores without creating single-row orphan pages', () => {
+    // 6 rows (12 measures) -> 2 pages of 3 rows each
+    expect(computePdfPageRowBatches(6)).toEqual([
+      [0, 1, 2],
+      [3, 4, 5],
+    ]);
+
+    // 8 rows (16 measures) -> 2 pages of 4 rows each
+    expect(computePdfPageRowBatches(8)).toEqual([
+      [0, 1, 2, 3],
+      [4, 5, 6, 7],
+    ]);
+
+    // 16 rows (32 measures, typical 1-2 min transcription) -> 4 pages of 4 rows each
+    const sixteen = computePdfPageRowBatches(16);
+    expect(sixteen.length).toBe(4);
+    expect(sixteen.every((page) => page.length === 4)).toBe(true);
+    expect(sixteen.flat()).toEqual(Array.from({ length: 16 }, (_, i) => i));
   });
 });

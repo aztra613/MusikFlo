@@ -218,4 +218,10 @@ describe('quantiseEvents', () => {
     expect(report.measures[0].every((event) => event.isRest)).toBe(true);
     expectFullMeasures(report);
   });
+
+  it('resolves grid ticks correctly for all explicit grids including quarter notes', () => {
+    expect(resolveGridTicks('4', [], 120)).toBe(TICKS_PER_QUARTER);
+    expect(resolveGridTicks('8', [], 120)).toBe(TICKS_PER_QUARTER / 2);
+    expect(resolveGridTicks('16', [], 120)).toBe(MIN_VALUE_TICKS);
+  });
 });
