@@ -179,7 +179,7 @@ export const SAMPLE_POP_PROGRESSION: Score = {
   timeSignature: { numerator: 4, denominator: 4 },
   keySignature: 'C',
   tempo: 120,
-  instrument: 'synth',
+  instrument: 'piano',
   createdAt: Date.now() - 400000,
   updatedAt: Date.now() - 400000,
   measures: [

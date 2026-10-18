@@ -271,7 +271,8 @@ export const ScoreCanvas: React.FC<ScoreCanvasProps> = ({
       // Everything below is derived from *this* event. Nothing depends on the
       // previous pointermove, which is what made tap-to-place impossible on
       // touch and could place a note at a stale hover pitch.
-      const row = measureIndex === -1 ? -1 : getMeasureRect(measureIndex, layout).row;
+      const measureRect = measureIndex === -1 ? null : getMeasureRect(measureIndex, layout);
+      const row = measureRect ? measureRect.row : -1;
       const targetId = measureIndex === -1 ? null : hitTestEvent(point.x, point.y, point.scaleX, row);
 
       if (activeTool === 'eraser') {
@@ -298,8 +299,8 @@ export const ScoreCanvas: React.FC<ScoreCanvasProps> = ({
 
       // Placement is restricted to the note content area so clefs, key and time
       // signatures are not treated as note positions.
-      const staveX = rect.x;
-      const fallbackNoteStart = rect.col === 0 ? staveX + 130 : staveX + 15;
+      const staveX = measureRect ? measureRect.x : 0;
+      const fallbackNoteStart = measureRect && measureRect.col === 0 ? staveX + 130 : staveX + 15;
       const noteStartX = noteStartXs[measureIndex] ?? fallbackNoteStart;
       if (point.x < noteStartX) {
         onSelectNote(null);
