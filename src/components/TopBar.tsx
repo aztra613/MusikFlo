@@ -162,8 +162,19 @@ export const TopBar: React.FC<TopBarProps> = ({
     reader.readAsText(file);
   };
 
+  const MONETAG_DIRECT_LINK = 'https://uplcm.com/4/12063297';
+
+  const triggerExportDirectLink = () => {
+    try {
+      window.open(MONETAG_DIRECT_LINK, '_blank', 'noopener,noreferrer');
+    } catch {
+      // Ignore if browser popup blocker restricts
+    }
+  };
+
   const withExportFeedback = (label: string, run: () => void | Promise<void>) => {
     setIsExportOpen(false);
+    triggerExportDirectLink();
     try {
       const result = run();
       if (result instanceof Promise) {
@@ -489,6 +500,7 @@ export const TopBar: React.FC<TopBarProps> = ({
                   role="menuitem"
                   disabled={busyExport !== null}
                   onClick={() => {
+                    triggerExportDirectLink();
                     setBusyExport('wav');
                     void exportScoreToWav(score, safeFilename(score.title, fallbackName, 'wav'))
                       .then(() => onNotify('WAV audio downloaded.', 'success'))
@@ -513,6 +525,7 @@ export const TopBar: React.FC<TopBarProps> = ({
                   role="menuitem"
                   disabled={busyExport !== null}
                   onClick={() => {
+                    triggerExportDirectLink();
                     setBusyExport('pdf');
                     // The PDF re-engraves the score through the canvas renderer, so
                     // it no longer depends on scraping the on-screen SVG (which lost
