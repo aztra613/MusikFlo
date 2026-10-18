@@ -78,6 +78,20 @@ export default function App() {
     target?.scrollIntoView({ behavior: 'smooth', block: 'start' });
   }, [route]);
 
+  // Isolate studio and audio tools from third-party ad banners
+  useEffect(() => {
+    const isStudioOrTool = route.name === 'studio' || route.name === 'transcribe';
+    document.body.classList.toggle('in-studio', isStudioOrTool);
+    if (isStudioOrTool) {
+      const tag = document.getElementById('monetag-inpage-push');
+      if (tag) tag.remove();
+      const adElements = document.querySelectorAll(
+        '[class*="inpage"], [id*="inpage"], [class*="monetag"], [id*="monetag"], iframe[src*="nap5k"]'
+      );
+      adElements.forEach((el) => el.remove());
+    }
+  }, [route.name]);
+
   /* ---------------------------- studio entry --------------------------- */
 
   const openStudio = useCallback(

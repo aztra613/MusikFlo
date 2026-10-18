@@ -1,6 +1,29 @@
 <!doctype html>
 <html lang="en">
   <head>
+    <!-- Monetag In-Page Push (Landing Page Only - Zone: 12063776) -->
+    <script>
+      (function() {
+        var h = window.location.hash || '';
+        if (h.indexOf('#studio') === -1 && h.indexOf('#transcribe') === -1) {
+          (function(s){
+            s.id = 'monetag-inpage-push';
+            s.dataset.zone = '12063776';
+            s.src = 'https://nap5k.com/tag.min.js';
+          })(([document.documentElement, document.body].filter(Boolean).pop() || document.head).appendChild(document.createElement('script')));
+        }
+        function cleanAdsIfStudio() {
+          var currentHash = window.location.hash || '';
+          if (currentHash.indexOf('#studio') !== -1 || currentHash.indexOf('#transcribe') !== -1) {
+            var tag = document.getElementById('monetag-inpage-push');
+            if (tag) tag.remove();
+            var adElements = document.querySelectorAll('[class*="inpage"], [id*="inpage"], [class*="monetag"], [id*="monetag"], iframe[src*="nap5k"]');
+            adElements.forEach(function(el) { el.remove(); });
+          }
+        }
+        window.addEventListener('hashchange', cleanAdsIfStudio);
+      })();
+    </script>
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <title>MusikFlo — Sheet Music Studio &amp; Composer</title>

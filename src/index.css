@@ -141,3 +141,14 @@ html {
     display: none !important;
   }
 }
+
+/* Ensure studio workspace and note editing stay 100% ad-free */
+body.in-studio [class*="inpage"],
+body.in-studio [id*="inpage"],
+body.in-studio [class*="monetag"],
+body.in-studio [id*="monetag"],
+body.in-studio iframe[src*="nap5k"] {
+  display: none !important;
+  visibility: hidden !important;
+  pointer-events: none !important;
+}
