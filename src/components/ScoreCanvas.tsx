@@ -1,6 +1,6 @@
 import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { Accidental as AccidentalType, NoteDuration, Score, ScoreNote, getScientificPitch } from '../types/music';
-import { getPitchFromLine, isValidStaffLine, shiftDiatonic } from '../utils/notationUtils';
+import { getPitchFromLine, isValidStaffLine, shiftDiatonic, MIN_STAFF_LINE, MAX_STAFF_LINE } from '../utils/notationUtils';
 import {
   DEFAULT_LAYOUT,
   MEASURES_PER_ROW,
@@ -212,7 +212,8 @@ export const ScoreCanvas: React.FC<ScoreCanvasProps> = ({
       const topLineY = measureTopLines[measureIndex] ?? getRowTopLineY(rect.row, layout);
       const metrics = { topLineY, lineSpacing: STAFF_LINE_SPACING };
 
-      const line = yToStaffLine(y, metrics);
+      const rawLine = yToStaffLine(y, metrics);
+      const line = Math.max(MIN_STAFF_LINE, Math.min(MAX_STAFF_LINE, rawLine));
       if (!isValidStaffLine(line)) return null;
 
       const pitch = getPitchFromLine(line, score.clef);
@@ -296,8 +297,9 @@ export const ScoreCanvas: React.FC<ScoreCanvasProps> = ({
 
       // Placement is restricted to the note content area so clefs, key and time
       // signatures are not treated as note positions.
-      const staveX = getMeasureRect(measureIndex, layout).x;
-      const noteStartX = noteStartXs[measureIndex] ?? staveX + 130;
+      const staveX = rect.x;
+      const fallbackNoteStart = rect.col === 0 ? staveX + 130 : staveX + 15;
+      const noteStartX = noteStartXs[measureIndex] ?? fallbackNoteStart;
       if (point.x < noteStartX) {
         onSelectNote(null);
         return;
@@ -476,7 +478,7 @@ export const ScoreCanvas: React.FC<ScoreCanvasProps> = ({
           room and grows to the left origin once the score is wider, keeping every
           part of a long score scrollable into view. */}
       <div
-        className="relative flex-1 overflow-auto bg-paper transition-colors duration-150"
+        className="relative flex-1 overflow-auto bg-paper transition-colors duration-150 touch-manipulation"
         onPointerMove={handlePointerMove}
         onPointerLeave={handlePointerLeave}
         onPointerDown={handlePointerDown}

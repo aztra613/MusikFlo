@@ -28,7 +28,7 @@ import { Inspector } from './Inspector';
 import { TransportDock } from './TransportDock';
 import { HelpModal } from './HelpModal';
 import { AudioToScoreFlow } from './AudioToScoreFlow';
-import { Sparkles, SlidersHorizontal, X, AudioLines } from 'lucide-react';
+import { Sparkles, SlidersHorizontal, X, AudioLines, MousePointer2, Music, Eraser } from 'lucide-react';
 
 interface StudioProps {
   initialScore: Score;
@@ -110,7 +110,7 @@ export const Studio: React.FC<StudioProps> = ({ initialScore, theme, onToggleThe
   const [activeDuration, setActiveDuration] = useState<NoteDuration>('4');
   const [activeAccidental, setActiveAccidental] = useState<Accidental | ''>('');
   const [activeDotted, setActiveDotted] = useState(false);
-  const [activeTool, setActiveTool] = useState<EditorTool>('select');
+  const [activeTool, setActiveTool] = useState<EditorTool>('note');
   const [learningMode, setLearningMode] = useState(false);
 
   const [copiedMeasure, setCopiedMeasure] = useState<{ events: ScoreNote[]; sourceIndex: number } | null>(null);
@@ -627,37 +627,152 @@ export const Studio: React.FC<StudioProps> = ({ initialScore, theme, onToggleThe
         </div>
       )}
 
-      {/* Mobile panel switches */}
-      <div className="md:hidden flex items-center gap-2 px-4 py-2 border-b border-border bg-surface">
-        <span className="text-[11px] font-semibold text-text-muted uppercase tracking-wider">Tool: {PANEL_LABELS[activeTool]}</span>
-        <div className="ml-auto flex items-center gap-1.5">
-          <button
-            type="button"
-            onClick={() => setIsTranscribeOpen(true)}
-            aria-label="Transcribe audio"
-            className="flex items-center gap-1 px-2.5 py-1 rounded-md border border-border bg-app-bg text-xs font-medium text-text-primary"
-          >
-            <AudioLines size={12} />
-            Transcribe
-          </button>
-          <button
-            type="button"
-            onClick={() => setMobilePanel((p) => (p === 'palette' ? 'none' : 'palette'))}
-            aria-expanded={mobilePanel === 'palette'}
-            className="px-2.5 py-1 rounded-md border border-border bg-app-bg text-xs font-medium text-text-primary"
-          >
-            Notation
-          </button>
-          <button
-            type="button"
-            onClick={() => setMobilePanel((p) => (p === 'inspector' ? 'none' : 'inspector'))}
-            aria-expanded={mobilePanel === 'inspector'}
-            className="flex items-center gap-1 px-2.5 py-1 rounded-md border border-border bg-app-bg text-xs font-medium text-text-primary"
-          >
-            <SlidersHorizontal size={12} />
-            Inspect
-          </button>
+      {/* Mobile top quick-controls */}
+      <div className="md:hidden flex flex-col border-b border-border bg-surface shadow-2xs shrink-0 select-none">
+        {/* Row 1: Tools + Panel Drawers */}
+        <div className="flex items-center justify-between gap-1.5 px-3 py-1.5 border-b border-border/60">
+          {/* Quick tool switcher */}
+          <div className="flex items-center gap-0.5 bg-app-bg p-0.5 rounded-lg border border-border" role="group" aria-label="Editor tool">
+            <button
+              type="button"
+              onClick={() => setActiveTool('note')}
+              className={`flex items-center gap-1 px-2.5 py-1 rounded-md text-xs font-semibold transition-all ${
+                activeTool === 'note'
+                  ? 'bg-primary text-white shadow-xs'
+                  : 'text-text-secondary hover:text-text-primary'
+              }`}
+              title="Note tool: tap staff to place note"
+              aria-pressed={activeTool === 'note'}
+            >
+              <Music size={12} />
+              <span>Note</span>
+            </button>
+            <button
+              type="button"
+              onClick={() => setActiveTool('rest')}
+              className={`flex items-center gap-1 px-2 py-1 rounded-md text-xs font-semibold transition-all ${
+                activeTool === 'rest'
+                  ? 'bg-primary text-white shadow-xs'
+                  : 'text-text-secondary hover:text-text-primary'
+              }`}
+              title="Rest tool: tap staff to place rest"
+              aria-pressed={activeTool === 'rest'}
+            >
+              <span className="font-serif text-sm leading-none">𝄽</span>
+              <span>Rest</span>
+            </button>
+            <button
+              type="button"
+              onClick={() => setActiveTool('select')}
+              className={`flex items-center gap-1 px-2 py-1 rounded-md text-xs font-semibold transition-all ${
+                activeTool === 'select'
+                  ? 'bg-primary text-white shadow-xs'
+                  : 'text-text-secondary hover:text-text-primary'
+              }`}
+              title="Select tool"
+              aria-pressed={activeTool === 'select'}
+            >
+              <MousePointer2 size={12} />
+              <span>Select</span>
+            </button>
+            <button
+              type="button"
+              onClick={() => setActiveTool('eraser')}
+              className={`flex items-center gap-1 px-2 py-1 rounded-md text-xs font-semibold transition-all ${
+                activeTool === 'eraser'
+                  ? 'bg-danger text-white shadow-xs'
+                  : 'text-text-secondary hover:text-danger'
+              }`}
+              title="Eraser tool"
+              aria-pressed={activeTool === 'eraser'}
+            >
+              <Eraser size={12} />
+            </button>
+          </div>
+
+          {/* Quick actions & More drawer */}
+          <div className="flex items-center gap-1">
+            <button
+              type="button"
+              onClick={() => setIsTranscribeOpen(true)}
+              aria-label="Transcribe audio"
+              className="flex items-center gap-1 px-2 py-1 rounded-md border border-border bg-app-bg text-[11px] font-medium text-text-primary hover:bg-surface-raised"
+              title="Audio to sheet music"
+            >
+              <AudioLines size={12} />
+              <span className="hidden xs:inline">Audio</span>
+            </button>
+            <button
+              type="button"
+              onClick={() => setMobilePanel((p) => (p === 'palette' ? 'none' : 'palette'))}
+              aria-expanded={mobilePanel === 'palette'}
+              className="px-2 py-1 rounded-md border border-border bg-app-bg text-[11px] font-medium text-text-primary hover:bg-surface-raised"
+            >
+              More...
+            </button>
+          </div>
         </div>
+
+        {/* Row 2: Note / Rest durations & accidentals */}
+        {(activeTool === 'note' || activeTool === 'rest') && (
+          <div className="flex items-center justify-between gap-1 px-3 py-1.5 bg-surface-raised/40 overflow-x-auto text-xs">
+            <div className="flex items-center gap-1 shrink-0">
+              {[
+                { id: '1' as NoteDuration, label: 'Whole', glyph: activeTool === 'rest' ? '𝄻' : '𝅝' },
+                { id: '2' as NoteDuration, label: 'Half', glyph: activeTool === 'rest' ? '𝄼' : '𝅗𝅥' },
+                { id: '4' as NoteDuration, label: 'Quarter', glyph: activeTool === 'rest' ? '𝄽' : '𝅘𝅥' },
+                { id: '8' as NoteDuration, label: '8th', glyph: activeTool === 'rest' ? '𝄾' : '𝅘𝅥𝅯' },
+                { id: '16' as NoteDuration, label: '16th', glyph: activeTool === 'rest' ? '𝄿' : '𝅘𝅥𝅰' },
+              ].map((d) => (
+                <button
+                  key={d.id}
+                  type="button"
+                  onClick={() => setActiveDuration(d.id)}
+                  className={`flex items-center gap-1 px-2 py-0.5 rounded-md text-[11px] font-medium transition-colors ${
+                    activeDuration === d.id
+                      ? 'bg-primary text-white shadow-2xs font-semibold'
+                      : 'bg-app-bg border border-border text-text-secondary hover:text-text-primary'
+                  }`}
+                >
+                  <span className="font-serif leading-none">{d.glyph}</span>
+                  <span>{d.label}</span>
+                </button>
+              ))}
+            </div>
+
+            <div className="flex items-center gap-1 pl-2 border-l border-border/80 shrink-0">
+              <button
+                type="button"
+                onClick={() => setActiveDotted((d) => !d)}
+                className={`px-1.5 py-0.5 rounded text-[11px] font-bold border transition-colors ${
+                  activeDotted
+                    ? 'bg-primary text-white border-primary'
+                    : 'bg-app-bg border-border text-text-secondary'
+                }`}
+                title="Dotted note (adds half duration)"
+              >
+                • Dot
+              </button>
+              {(['', '#', 'b'] as const).map((acc) => (
+                <button
+                  key={acc || 'natural'}
+                  type="button"
+                  onClick={() => setActiveAccidental(activeAccidental === acc ? '' : acc)}
+                  className={`w-6 h-6 flex items-center justify-center rounded text-xs font-semibold border transition-colors ${
+                    activeAccidental === acc && acc !== ''
+                      ? 'bg-primary text-white border-primary'
+                      : activeAccidental === '' && acc === ''
+                      ? 'bg-surface-raised border-primary/40 text-primary font-bold'
+                      : 'bg-app-bg border-border text-text-secondary'
+                  }`}
+                  title={acc === '#' ? 'Sharp' : acc === 'b' ? 'Flat' : 'Natural'}
+                >
+                  {acc === '#' ? '♯' : acc === 'b' ? '♭' : '♮'}
+                </button>
+              ))}
+            </div>
+          </div>
+        )}
       </div>
 
       <div className="flex flex-1 overflow-hidden relative">
