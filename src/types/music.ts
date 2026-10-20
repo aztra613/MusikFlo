@@ -4,6 +4,8 @@
 
 export type Clef = 'treble' | 'bass';
 
+export type StaffMode = 'single' | 'grand';
+
 export type TimeSignature = {
   numerator: number;
   denominator: number;
@@ -31,18 +33,27 @@ export interface ScoreNote {
 export interface Measure {
   id: string;
   events: ScoreNote[];
+  /** Lower staff events in Grand Staff (Piano) mode */
+  bassEvents?: ScoreNote[];
+}
+
+export interface PlaybackMuteState {
+  trebleMuted?: boolean;
+  bassMuted?: boolean;
 }
 
 export interface Score {
   id: string;
   title: string;
   composer: string;
+  staffMode?: StaffMode; // 'single' (default) | 'grand' (Treble + Bass Piano Staff)
   clef: Clef;
   timeSignature: TimeSignature;
   keySignature: string; // e.g. 'C', 'G', 'D', 'F', 'Bb', 'Am'
   tempo: number; // BPM (40 - 240)
   instrument: InstrumentId;
   showTimeSigOnEveryBar?: boolean;
+  playbackMute?: PlaybackMuteState;
   measures: Measure[];
   createdAt: number;
   updatedAt: number;

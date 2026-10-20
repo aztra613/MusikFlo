@@ -2,6 +2,7 @@ import { describe, expect, it } from 'vitest';
 import {
   DEFAULT_LAYOUT,
   EventBox,
+  getLayoutForScore,
   getMeasureIndexAtPoint,
   getMeasureRect,
   getRowTopLineY,
@@ -44,6 +45,18 @@ describe('layout', () => {
     expect(totalRows(5)).toBe(3);
     expect(totalWidth()).toBe(40 * 2 + 2 * DEFAULT_LAYOUT.measureWidth);
     expect(totalHeight(5)).toBeGreaterThan(totalHeight(2));
+  });
+
+  it('provides Grand Staff layout geometry when staffMode is grand', () => {
+    const singleLayout = getLayoutForScore({ staffMode: 'single' } as any);
+    expect(singleLayout.staveHeight).toBe(DEFAULT_LAYOUT.staveHeight);
+    expect(singleLayout.staffMode).toBe('single');
+
+    const grandLayout = getLayoutForScore({ staffMode: 'grand' } as any);
+    expect(grandLayout.staveHeight).toBe(270);
+    expect(grandLayout.bassOffsetY).toBe(100);
+    expect(grandLayout.staffMode).toBe('grand');
+    expect(totalHeight(4, grandLayout)).toBeGreaterThan(totalHeight(4, singleLayout));
   });
 });
 

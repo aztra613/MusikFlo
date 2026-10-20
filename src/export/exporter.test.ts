@@ -230,6 +230,26 @@ describe('exportToMidi', () => {
     expect(parsed.ticksPerQuarter).toBeGreaterThan(0);
     expect(scoreTicks).toBeCloseTo(expectedTicks, 6);
   });
+
+  it('exports multiple tracks for Grand Staff scores in exportToMidi', async () => {
+    const score: Score = baseScore(
+      [{ id: 't1', step: 'c', octave: 5, duration: '4' }],
+      {
+        staffMode: 'grand',
+        measures: [
+          {
+            id: 'm1',
+            events: [{ id: 't1', step: 'c', octave: 5, duration: '4' }],
+            bassEvents: [{ id: 'b1', step: 'c', octave: 3, duration: '4' }],
+          },
+        ],
+      }
+    );
+
+    const midi = readMidi(await bytesOf(score));
+    expect(midi.trackCount).toBe(2);
+    expect(midi.soundingNotes).toBe(2);
+  });
 });
 
 describe('computePdfPageRowBatches', () => {
@@ -257,5 +277,13 @@ describe('computePdfPageRowBatches', () => {
     expect(sixteen.length).toBe(4);
     expect(sixteen.every((page) => page.length === 4)).toBe(true);
     expect(sixteen.flat()).toEqual(Array.from({ length: 16 }, (_, i) => i));
+  });
+
+  it('balances Grand Staff pagination with targetPerPage = 2', () => {
+    // 4 rows in Grand Staff -> 2 pages of 2 rows each
+    expect(computePdfPageRowBatches(4, 2)).toEqual([
+      [0, 1],
+      [2, 3],
+    ]);
   });
 });

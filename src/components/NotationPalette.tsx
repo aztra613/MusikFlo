@@ -1,6 +1,6 @@
 import React from 'react';
 import { NoteDuration, Accidental } from '../types/music';
-import { Eraser, GraduationCap, MousePointer2, Music } from 'lucide-react';
+import { Eraser, GraduationCap, MousePointer2, Music, Hand } from 'lucide-react';
 import { EditorTool } from './ScoreCanvas';
 
 interface NotationPaletteProps {
@@ -18,6 +18,7 @@ interface NotationPaletteProps {
 
 const TOOL_HINTS: Record<EditorTool, string> = {
   select: 'Select tool: click a note or rest to edit it. Clicking empty staff does nothing.',
+  pan: 'Pan tool: drag to freely scroll around the score without placing notes.',
   note: 'Note tool: click empty staff to place a note. Clicking an existing note selects it.',
   rest: 'Rest tool: click empty staff to place a rest. Clicking an existing event selects it.',
   eraser: 'Eraser tool: click a note or rest to delete it. Clicking empty staff does nothing.',
@@ -74,6 +75,17 @@ export const NotationPalette: React.FC<NotationPaletteProps> = ({
 
           <button
             type="button"
+            onClick={() => onSelectTool('pan')}
+            className={toolButtonClass('pan')}
+            title={TOOL_HINTS.pan}
+            aria-pressed={activeTool === 'pan'}
+          >
+            <Hand size={13} />
+            <span>Pan</span>
+          </button>
+
+          <button
+            type="button"
             onClick={() => onSelectTool('note')}
             className={toolButtonClass('note')}
             title={TOOL_HINTS.note}
@@ -99,7 +111,7 @@ export const NotationPalette: React.FC<NotationPaletteProps> = ({
           <button
             type="button"
             onClick={() => onSelectTool('eraser')}
-            className={toolButtonClass('eraser')}
+            className={`${toolButtonClass('eraser')} col-span-2`}
             title={TOOL_HINTS.eraser}
             aria-pressed={activeTool === 'eraser'}
           >

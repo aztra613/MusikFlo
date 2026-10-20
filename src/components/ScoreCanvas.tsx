@@ -6,6 +6,7 @@ import {
   MEASURES_PER_ROW,
   STAFF_LINE_SPACING,
   findEventAtPoint,
+  getLayoutForScore,
   getMeasureIndexAtPoint,
   getMeasureRect,
   getRowTopLineY,
@@ -23,9 +24,9 @@ import {
 } from '../score/renderScore';
 import { Selection } from '../editor/editorReducer';
 import { audioEngine } from '../audio/audioEngine';
-import { ZoomIn, ZoomOut, RotateCcw, Trash2, ArrowUp, ArrowDown, X, Copy, ClipboardPaste } from 'lucide-react';
+import { ZoomIn, ZoomOut, RotateCcw, Trash2, ArrowUp, ArrowDown, X, Copy, ClipboardPaste, Hand } from 'lucide-react';
 
-export type EditorTool = 'select' | 'note' | 'rest' | 'eraser';
+export type EditorTool = 'select' | 'note' | 'rest' | 'eraser' | 'pan';
 
 /** Screen-space padding applied to every event hit target (touch friendly). */
 const HIT_SLOP_SCREEN_PX = 12;
@@ -35,7 +36,7 @@ interface ScoreCanvasProps {
   selection: Selection;
   onSelectNote: (noteId: string | null) => void;
   onSelectMeasure: (measureIndex: number | null) => void;
-  onInsertEvent: (measureIndex: number, index: number, event: Omit<ScoreNote, 'id'>) => void;
+  onInsertEvent: (measureIndex: number, index: number, event: Omit<ScoreNote, 'id'>, staff?: 'treble' | 'bass') => void;
   onUpdateNote: (noteId: string, updates: Partial<ScoreNote>) => void;
   onDeleteNote: (noteId: string) => void;
   onDuplicateMeasure: (measureIndex: number) => void;
@@ -61,6 +62,7 @@ interface HoverState {
   x: number;
   label: string;
   isLedger: boolean;
+  staff?: 'treble' | 'bass';
 }
 
 export const ScoreCanvas: React.FC<ScoreCanvasProps> = ({
@@ -100,10 +102,11 @@ export const ScoreCanvas: React.FC<ScoreCanvasProps> = ({
   const [renderedEvents, setRenderedEvents] = useState<RenderedEvent[]>([]);
   /** Top staff line of each rendered measure, indexed by measure. */
   const [measureTopLines, setMeasureTopLines] = useState<number[]>([]);
+  const [measureBassTopLines, setMeasureBassTopLines] = useState<number[]>([]);
   const [noteStartXs, setNoteStartXs] = useState<number[]>([]);
 
   const palette = theme === 'dark' ? DARK_NOTATION_PALETTE : LIGHT_NOTATION_PALETTE;
-  const layout = DEFAULT_LAYOUT;
+  const layout = useMemo(() => getLayoutForScore(score), [score.staffMode]);
   const svgWidth = totalWidth(layout);
   const svgHeight = totalHeight(score.measures.length, layout);
 
@@ -115,6 +118,10 @@ export const ScoreCanvas: React.FC<ScoreCanvasProps> = ({
     for (const measure of score.measures) {
       const found = measure.events.find((n) => n.id === selectedNoteId);
       if (found) return found;
+      if (measure.bassEvents) {
+        const foundBass = measure.bassEvents.find((n) => n.id === selectedNoteId);
+        if (foundBass) return foundBass;
+      }
     }
     return null;
   }, [selectedNoteId, score]);
@@ -142,7 +149,8 @@ export const ScoreCanvas: React.FC<ScoreCanvasProps> = ({
         const isPlaying =
           !!activePlayhead?.isPlaying &&
           activePlayhead.measureIndex === mIdx &&
-          measure?.events[activePlayhead.eventIndex]?.id === note.id;
+          (measure?.events[activePlayhead.eventIndex]?.id === note.id ||
+            measure?.bassEvents?.[activePlayhead.eventIndex]?.id === note.id);
         if (isPlaying) return { fillStyle: palette.playhead, strokeStyle: palette.playhead };
         if (selectedNoteId === note.id) return { fillStyle: palette.selection, strokeStyle: palette.selection };
         return undefined;
@@ -158,6 +166,7 @@ export const ScoreCanvas: React.FC<ScoreCanvasProps> = ({
 
     setRenderedEvents(rendered.events);
     setMeasureTopLines(rendered.measureTopLines);
+    setMeasureBassTopLines(rendered.measureBassTopLines ?? []);
     setNoteStartXs(rendered.noteStartXs);
   }, [score, selectedNoteId, activePlayhead, palette, layout, svgWidth, svgHeight, zoomLevel]);
 
@@ -205,19 +214,36 @@ export const ScoreCanvas: React.FC<ScoreCanvasProps> = ({
   const resolvePitchAt = useCallback(
     (x: number, y: number, measureIndex: number): HoverState | null => {
       const rect = getMeasureRect(measureIndex, layout);
+      const isGrand = score.staffMode === 'grand';
 
-      // `measureTopLines` is indexed by *measure*, not by row. Reading it with
-      // the row index made every system below the first measure against row 0's
-      // staff geometry, which is what produced wrong pitches (or no placement at
-      // all) as soon as a score grew past one row.
-      const topLineY = measureTopLines[measureIndex] ?? getRowTopLineY(rect.row, layout);
+      const trebleTopLineY = measureTopLines[measureIndex] ?? getRowTopLineY(rect.row, layout);
+      const bassTopLineY = measureBassTopLines[measureIndex] ?? (trebleTopLineY + (layout.bassOffsetY ?? 100));
+
+      let staff: 'treble' | 'bass' = 'treble';
+      let topLineY = trebleTopLineY;
+      let clefForStaff = score.clef;
+
+      if (isGrand) {
+        // Treble stave is 40px tall (5 lines * 10px spacing - 10px).
+        // Midpoint between treble bottom and bass top:
+        const staveMidpointY = (trebleTopLineY + 40 + bassTopLineY) / 2;
+        if (y >= staveMidpointY) {
+          staff = 'bass';
+          topLineY = bassTopLineY;
+          clefForStaff = 'bass';
+        } else {
+          staff = 'treble';
+          topLineY = trebleTopLineY;
+          clefForStaff = 'treble';
+        }
+      }
+
       const metrics = { topLineY, lineSpacing: STAFF_LINE_SPACING };
-
       const rawLine = yToStaffLine(y, metrics);
       const line = Math.max(MIN_STAFF_LINE, Math.min(MAX_STAFF_LINE, rawLine));
       if (!isValidStaffLine(line)) return null;
 
-      const pitch = getPitchFromLine(line, score.clef);
+      const pitch = getPitchFromLine(line, clefForStaff);
       return {
         measureIndex,
         line,
@@ -225,13 +251,38 @@ export const ScoreCanvas: React.FC<ScoreCanvasProps> = ({
         x,
         label: pitch.label,
         isLedger: pitch.isLedger,
+        staff,
       };
     },
-    [layout, measureTopLines, score.clef]
+    [layout, measureTopLines, measureBassTopLines, score.clef, score.staffMode]
   );
+
+  const panStartRef = useRef<{ x: number; y: number; scrollLeft: number; scrollTop: number } | null>(null);
+  const touchDownRef = useRef<{ clientX: number; clientY: number; time: number } | null>(null);
+  const [isPanDragging, setIsPanDragging] = useState(false);
 
   const handlePointerMove = useCallback(
     (e: React.PointerEvent<HTMLDivElement>) => {
+      // Pan dragging
+      if (panStartRef.current && viewportRef.current) {
+        const dx = e.clientX - panStartRef.current.x;
+        const dy = e.clientY - panStartRef.current.y;
+        viewportRef.current.scrollLeft = panStartRef.current.scrollLeft - dx;
+        viewportRef.current.scrollTop = panStartRef.current.scrollTop - dy;
+        return;
+      }
+
+      // If finger moved more than 8px, user is scrolling/gesturing, not tapping!
+      if (touchDownRef.current) {
+        const dist = Math.hypot(e.clientX - touchDownRef.current.clientX, e.clientY - touchDownRef.current.clientY);
+        if (dist > 8) {
+          touchDownRef.current = null;
+        }
+      }
+
+      // Skip hover logic on touch devices
+      if (e.pointerType === 'touch') return;
+
       const point = toScorePoint(e.clientX, e.clientY);
       if (!point) return;
 
@@ -246,7 +297,7 @@ export const ScoreCanvas: React.FC<ScoreCanvasProps> = ({
       const hovered = hitTestEvent(point.x, point.y, point.scaleX, row);
       setHoveredNoteId(hovered);
 
-      if (hovered || activeTool === 'select' || activeTool === 'eraser') {
+      if (hovered || activeTool === 'select' || activeTool === 'eraser' || activeTool === 'pan') {
         setHover(null);
         return;
       }
@@ -261,16 +312,13 @@ export const ScoreCanvas: React.FC<ScoreCanvasProps> = ({
     setHoveredNoteId(null);
   }, []);
 
-  const handlePointerDown = useCallback(
-    (e: React.PointerEvent<HTMLDivElement>) => {
-      const point = toScorePoint(e.clientX, e.clientY);
+  const executeActionAt = useCallback(
+    (clientX: number, clientY: number) => {
+      if (activeTool === 'pan') return;
+      const point = toScorePoint(clientX, clientY);
       if (!point) return;
 
       const measureIndex = getMeasureIndexAtPoint(point.x, point.y, score.measures.length, layout);
-
-      // Everything below is derived from *this* event. Nothing depends on the
-      // previous pointermove, which is what made tap-to-place impossible on
-      // touch and could place a note at a stale hover pitch.
       const measureRect = measureIndex === -1 ? null : getMeasureRect(measureIndex, layout);
       const row = measureRect ? measureRect.row : -1;
       const targetId = measureIndex === -1 ? null : hitTestEvent(point.x, point.y, point.scaleX, row);
@@ -280,11 +328,10 @@ export const ScoreCanvas: React.FC<ScoreCanvasProps> = ({
         return;
       }
 
-      // An existing event is always selected, never stacked over, in note/rest
-      // mode; the select tool never inserts anything at all.
       if (targetId) {
         onSelectNote(targetId);
-        const found = score.measures.flatMap((m) => m.events).find((n) => n.id === targetId);
+        const allEvents = score.measures.flatMap((m) => [...m.events, ...(m.bassEvents ?? [])]);
+        const found = allEvents.find((n) => n.id === targetId);
         if (found && !found.isRest) audioEngine.previewNote(found, score.instrument);
         return;
       }
@@ -297,8 +344,6 @@ export const ScoreCanvas: React.FC<ScoreCanvasProps> = ({
       const pitch = resolvePitchAt(point.x, point.y, measureIndex);
       if (!pitch) return;
 
-      // Placement is restricted to the note content area so clefs, key and time
-      // signatures are not treated as note positions.
       const staveX = measureRect ? measureRect.x : 0;
       const fallbackNoteStart = measureRect && measureRect.col === 0 ? staveX + 130 : staveX + 15;
       const noteStartX = noteStartXs[measureIndex] ?? fallbackNoteStart;
@@ -307,20 +352,29 @@ export const ScoreCanvas: React.FC<ScoreCanvasProps> = ({
         return;
       }
 
+      const targetStaff = pitch.staff ?? 'treble';
       const measureEvents = renderedEvents
-        .filter((ev) => ev.measureIndex === measureIndex)
+        .filter((ev) => ev.measureIndex === measureIndex && (score.staffMode !== 'grand' || ev.staff === targetStaff))
         .sort((a, b) => a.index - b.index)
         .map((ev) => ev.box);
 
-      const resolved = getPitchFromLine(pitch.line, score.clef);
-      onInsertEvent(measureIndex, insertionIndexForX(point.x, measureEvents), {
-        step: resolved.step,
-        octave: resolved.octave,
-        duration: activeDuration,
-        dotted: activeDotted || undefined,
-        accidental: activeAccidental || undefined,
-        isRest: activeTool === 'rest',
-      });
+      const clefForVoice = score.staffMode === 'grand' ? (targetStaff === 'bass' ? 'bass' : 'treble') : score.clef;
+      const resolved = getPitchFromLine(pitch.line, clefForVoice);
+      onInsertEvent(
+        measureIndex,
+        insertionIndexForX(point.x, measureEvents),
+        {
+          step: resolved.step,
+          octave: resolved.octave,
+          duration: activeDuration,
+          dotted: activeDotted || undefined,
+          accidental: activeAccidental || undefined,
+          isRest: activeTool === 'rest',
+        },
+        targetStaff
+      );
+
+      onSelectMeasure(measureIndex);
 
       if (activeTool === 'note') {
         audioEngine.previewNote(
@@ -345,15 +399,85 @@ export const ScoreCanvas: React.FC<ScoreCanvasProps> = ({
       noteStartXs,
       onDeleteNote,
       onInsertEvent,
+      onSelectMeasure,
       onSelectNote,
       renderedEvents,
       resolvePitchAt,
       score.clef,
       score.instrument,
       score.measures,
+      score.staffMode,
       toScorePoint,
     ]
   );
+
+  const handlePointerDown = useCallback(
+    (e: React.PointerEvent<HTMLDivElement>) => {
+      if (activeTool === 'pan') {
+        try {
+          e.currentTarget.setPointerCapture(e.pointerId);
+        } catch {}
+        panStartRef.current = {
+          x: e.clientX,
+          y: e.clientY,
+          scrollLeft: viewportRef.current?.scrollLeft ?? 0,
+          scrollTop: viewportRef.current?.scrollTop ?? 0,
+        };
+        setIsPanDragging(true);
+        return;
+      }
+
+      if (e.pointerType === 'touch') {
+        touchDownRef.current = {
+          clientX: e.clientX,
+          clientY: e.clientY,
+          time: Date.now(),
+        };
+        return;
+      }
+
+      if (e.button === 0) {
+        executeActionAt(e.clientX, e.clientY);
+      }
+    },
+    [activeTool, executeActionAt]
+  );
+
+  const handlePointerUp = useCallback(
+    (e: React.PointerEvent<HTMLDivElement>) => {
+      if (panStartRef.current) {
+        panStartRef.current = null;
+        setIsPanDragging(false);
+        try {
+          e.currentTarget.releasePointerCapture(e.pointerId);
+        } catch {}
+        return;
+      }
+
+      if (touchDownRef.current) {
+        const { clientX, clientY, time } = touchDownRef.current;
+        touchDownRef.current = null;
+        const duration = Date.now() - time;
+        const dist = Math.hypot(e.clientX - clientX, e.clientY - clientY);
+
+        if (dist <= 10 && duration < 600) {
+          executeActionAt(clientX, clientY);
+          if (typeof navigator !== 'undefined' && navigator.vibrate) {
+            try {
+              navigator.vibrate(12);
+            } catch {}
+          }
+        }
+      }
+    },
+    [executeActionAt]
+  );
+
+  const handlePointerCancel = useCallback(() => {
+    panStartRef.current = null;
+    touchDownRef.current = null;
+    setIsPanDragging(false);
+  }, []);
 
   /* ------------------------------------------------------------------ */
   /* Derived overlay geometry                                            */
@@ -366,7 +490,9 @@ export const ScoreCanvas: React.FC<ScoreCanvasProps> = ({
 
   const playingBox = useMemo(() => {
     if (!activePlayhead?.isPlaying) return undefined;
-    const note = score.measures[activePlayhead.measureIndex]?.events[activePlayhead.eventIndex];
+    const m = score.measures[activePlayhead.measureIndex];
+    if (!m) return undefined;
+    const note = m.events[activePlayhead.eventIndex] ?? m.bassEvents?.[activePlayhead.eventIndex];
     return note ? renderedEvents.find((e) => e.id === note.id)?.box : undefined;
   }, [activePlayhead, score.measures, renderedEvents]);
 
@@ -378,13 +504,17 @@ export const ScoreCanvas: React.FC<ScoreCanvasProps> = ({
   };
 
   const cursor =
-    activeTool === 'select' || activeTool === 'eraser'
-      ? 'default'
-      : hoveredNoteId
-        ? 'pointer'
-        : hover
-          ? 'crosshair'
-          : 'default';
+    activeTool === 'pan'
+      ? isPanDragging
+        ? 'grabbing'
+        : 'grab'
+      : activeTool === 'select' || activeTool === 'eraser'
+        ? 'default'
+        : hoveredNoteId
+          ? 'pointer'
+          : hover
+            ? 'crosshair'
+            : 'default';
 
   const scale = (n: number) => n * zoomLevel;
 
@@ -435,6 +565,25 @@ export const ScoreCanvas: React.FC<ScoreCanvasProps> = ({
     }
   }, [activePlayhead?.measureIndex, activePlayhead?.isPlaying, layout, zoomLevel]);
 
+  // Scroll to selected measure when selectedMeasureIndex changes and not playing
+  useEffect(() => {
+    if (selectedMeasureIndex === null || activePlayhead?.isPlaying || !viewportRef.current) return;
+    const viewport = viewportRef.current;
+    const rect = getMeasureRect(selectedMeasureIndex, layout);
+    const measureLeft = rect.x * zoomLevel;
+    const measureRight = (rect.x + rect.width) * zoomLevel;
+    const clientW = viewport.clientWidth;
+    const scrollL = viewport.scrollLeft;
+
+    if (measureLeft < scrollL + 20 || measureRight > scrollL + clientW - 20) {
+      viewport.scrollTo({
+        left: Math.max(0, measureLeft - 30),
+        top: Math.max(0, rect.y * zoomLevel - 30),
+        behavior: 'smooth',
+      });
+    }
+  }, [selectedMeasureIndex, layout, zoomLevel, activePlayhead?.isPlaying]);
+
   return (
     <div className="relative flex flex-col w-full h-full select-none">
       {/* Canvas toolbar: selection context + zoom */}
@@ -478,7 +627,13 @@ export const ScoreCanvas: React.FC<ScoreCanvasProps> = ({
           <div className="flex items-center gap-3 flex-wrap">
             <span className="font-medium text-text-primary">{score.title}</span>
             <span aria-hidden="true">·</span>
-            <span>{score.clef === 'treble' ? 'Treble Clef' : 'Bass Clef'}</span>
+            <span>
+              {score.staffMode === 'grand'
+                ? 'Grand Staff (𝄞 + 𝄢)'
+                : score.clef === 'treble'
+                  ? 'Treble Clef'
+                  : 'Bass Clef'}
+            </span>
             <span aria-hidden="true">·</span>
             <span>
               {score.timeSignature.numerator}/{score.timeSignature.denominator}
@@ -491,7 +646,20 @@ export const ScoreCanvas: React.FC<ScoreCanvasProps> = ({
         <div className="flex items-center gap-1 shrink-0">
           <button
             type="button"
-            onClick={() => setZoomLevel((z) => Math.max(0.7, Math.round((z - 0.1) * 10) / 10))}
+            onClick={() => {
+              if (!viewportRef.current) return;
+              const w = viewportRef.current.clientWidth - 40;
+              const fitZoom = Math.min(1.2, Math.max(0.35, Math.round((w / svgWidth) * 100) / 100));
+              setZoomLevel(fitZoom);
+            }}
+            className="px-2 py-0.5 rounded text-[11px] font-semibold bg-surface-raised hover:bg-primary-soft hover:text-primary border border-border transition-colors"
+            title="Fit score to screen width"
+          >
+            Fit
+          </button>
+          <button
+            type="button"
+            onClick={() => setZoomLevel((z) => Math.max(0.35, Math.round((z - 0.1) * 10) / 10))}
             className="p-1 rounded-md hover:bg-primary-soft hover:text-primary transition-colors"
             title="Zoom out"
             aria-label="Zoom out"
@@ -520,18 +688,15 @@ export const ScoreCanvas: React.FC<ScoreCanvasProps> = ({
         </div>
       </div>
 
-      {/* Score viewport.
-          Centring an overflowing child (with justify-center or auto margins)
-          clips the start of the score and makes those pixels unreachable, so the
-          score sits in a row that is `min-w-full` — it centres while there is
-          room and grows to the left origin once the score is wider, keeping every
-          part of a long score scrollable into view. */}
+      {/* Score viewport */}
       <div
         ref={viewportRef}
-        className="relative flex-1 overflow-auto bg-paper transition-colors duration-150 touch-manipulation"
+        className="relative flex-1 overflow-auto bg-paper transition-colors duration-150 touch-pan-x touch-pan-y"
         onPointerMove={handlePointerMove}
         onPointerLeave={handlePointerLeave}
         onPointerDown={handlePointerDown}
+        onPointerUp={handlePointerUp}
+        onPointerCancel={handlePointerCancel}
         style={{ cursor }}
       >
         <div className="flex w-max min-w-full justify-center p-6 md:p-8">
@@ -582,7 +747,7 @@ export const ScoreCanvas: React.FC<ScoreCanvasProps> = ({
                       left: scale(rect.x - 4),
                       top: scale(topLineY - 4),
                       width: scale(layout.measureWidth + 8),
-                      height: scale(112),
+                      height: scale(score.staffMode === 'grand' ? 220 : 112),
                     }}
                   />
                 )}

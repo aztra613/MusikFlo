@@ -29,7 +29,7 @@ import { TransportDock } from './TransportDock';
 import { HelpModal } from './HelpModal';
 import { AudioToScoreFlow } from './AudioToScoreFlow';
 import { WelcomeTutorial, shouldShowTutorial } from './WelcomeTutorial';
-import { Sparkles, SlidersHorizontal, X, AudioLines, MousePointer2, Music, Eraser } from 'lucide-react';
+import { Sparkles, SlidersHorizontal, X, AudioLines, MousePointer2, Music, Eraser, Hand, ChevronLeft, ChevronRight, Plus, Copy } from 'lucide-react';
 
 interface StudioProps {
   initialScore: Score;
@@ -47,6 +47,7 @@ interface Toast {
 
 const PANEL_LABELS: Record<EditorTool, string> = {
   select: 'Select',
+  pan: 'Pan',
   note: 'Note',
   rest: 'Rest',
   eraser: 'Eraser',
@@ -136,6 +137,10 @@ export const Studio: React.FC<StudioProps> = ({ initialScore, theme, onToggleThe
     for (const measure of score.measures) {
       const found = measure.events.find((n) => n.id === selectedNoteId);
       if (found) return found;
+      if (measure.bassEvents) {
+        const foundBass = measure.bassEvents.find((n) => n.id === selectedNoteId);
+        if (foundBass) return foundBass;
+      }
     }
     return null;
   }, [selectedNoteId, score]);
@@ -235,20 +240,27 @@ export const Studio: React.FC<StudioProps> = ({ initialScore, theme, onToggleThe
           const src = s.measures[sourceIndex];
           if (!src) return null;
           const cloned = cloneEvents(src.events);
+          const clonedBass = src.bassEvents ? cloneEvents(src.bassEvents) : undefined;
 
           if (targetIndex < s.measures.length) {
             const existing = s.measures[targetIndex];
-            if (existing.events.length === 0) {
-              return replaceMeasureEvents(s, targetIndex, cloned);
+            if (existing.events.length === 0 && (!existing.bassEvents || existing.bassEvents.length === 0)) {
+              return {
+                ...s,
+                measures: s.measures.map((m, idx) =>
+                  idx === targetIndex ? { ...m, events: cloned, bassEvents: clonedBass } : m
+                ),
+                updatedAt: Date.now(),
+              };
             }
             const measures = s.measures.slice();
-            measures.splice(targetIndex, 0, { id: makeMeasureId(targetIndex), events: cloned });
+            measures.splice(targetIndex, 0, { id: makeMeasureId(targetIndex), events: cloned, bassEvents: clonedBass });
             return { ...s, measures, updatedAt: Date.now() };
           }
 
           return {
             ...s,
-            measures: [...s.measures, { id: makeMeasureId(s.measures.length), events: cloned }],
+            measures: [...s.measures, { id: makeMeasureId(s.measures.length), events: cloned, bassEvents: clonedBass }],
             updatedAt: Date.now(),
           };
         },
@@ -321,7 +333,16 @@ export const Studio: React.FC<StudioProps> = ({ initialScore, theme, onToggleThe
     (measureIndex: number) => {
       dispatch({
         type: 'mutate',
-        mutate: (s) => (s.measures[measureIndex]?.events.length ? replaceMeasureEvents(s, measureIndex, []) : null),
+        mutate: (s) => {
+          const m = s.measures[measureIndex];
+          if (m && (m.events.length > 0 || (m.bassEvents && m.bassEvents.length > 0))) {
+            const nextMeasures = s.measures.map((measure, idx) =>
+              idx === measureIndex ? { ...measure, events: [], bassEvents: [] } : measure
+            );
+            return { ...s, measures: nextMeasures, updatedAt: Date.now() };
+          }
+          return null;
+        },
         selection: 'auto',
       });
       notify(`Cleared Bar ${measureIndex + 1}.`);
@@ -329,14 +350,17 @@ export const Studio: React.FC<StudioProps> = ({ initialScore, theme, onToggleThe
     [notify]
   );
 
-  const handleInsertEvent = useCallback((measureIndex: number, index: number, event: Omit<ScoreNote, 'id'>) => {
-    const id = makeEventId();
-    dispatch({
-      type: 'mutate',
-      mutate: (s) => insertEvent(s, measureIndex, index, event, id),
-      selection: { kind: 'event', noteId: id },
-    });
-  }, []);
+  const handleInsertEvent = useCallback(
+    (measureIndex: number, index: number, event: Omit<ScoreNote, 'id'>, staff: 'treble' | 'bass' = 'treble') => {
+      const id = makeEventId();
+      dispatch({
+        type: 'mutate',
+        mutate: (s) => insertEvent(s, measureIndex, index, event, id, staff),
+        selection: { kind: 'event', noteId: id },
+      });
+    },
+    []
+  );
 
   const handleUpdateNote = useCallback((noteId: string, updates: Partial<ScoreNote>) => {
     dispatch({ type: 'mutate', mutate: (s) => updateEvent(s, noteId, updates) });
@@ -665,6 +689,20 @@ export const Studio: React.FC<StudioProps> = ({ initialScore, theme, onToggleThe
             </button>
             <button
               type="button"
+              onClick={() => setActiveTool('pan')}
+              className={`flex items-center gap-1 px-2 py-1 rounded-md text-xs font-semibold transition-all ${
+                activeTool === 'pan'
+                  ? 'bg-primary text-white shadow-xs'
+                  : 'text-text-secondary hover:text-text-primary'
+              }`}
+              title="Pan tool: swipe to freely scroll score"
+              aria-pressed={activeTool === 'pan'}
+            >
+              <Hand size={12} />
+              <span>Pan</span>
+            </button>
+            <button
+              type="button"
               onClick={() => setActiveTool('select')}
               className={`flex items-center gap-1 px-2 py-1 rounded-md text-xs font-semibold transition-all ${
                 activeTool === 'select'
@@ -775,6 +813,85 @@ export const Studio: React.FC<StudioProps> = ({ initialScore, theme, onToggleThe
             </div>
           </div>
         )}
+
+        {/* Row 3: Mobile Bar Navigation & Quick Clef Switcher */}
+        <div className="flex items-center justify-between gap-2 px-3 py-1.5 bg-app-bg/80 border-t border-border/60 text-xs">
+          {/* Bar Prev / Next / Counter */}
+          <div className="flex items-center gap-1">
+            <button
+              type="button"
+              onClick={() => {
+                const current = selectedMeasureIndex !== null ? selectedMeasureIndex : 0;
+                const prev = Math.max(0, current - 1);
+                handleSelectMeasure(prev);
+              }}
+              disabled={(selectedMeasureIndex !== null ? selectedMeasureIndex : 0) <= 0}
+              className="p-1 rounded bg-surface border border-border text-text-secondary disabled:opacity-30 hover:text-text-primary"
+              title="Previous Bar"
+              aria-label="Previous Bar"
+            >
+              <ChevronLeft size={13} />
+            </button>
+            <span className="font-mono font-semibold px-2 py-0.5 rounded bg-surface border border-border text-text-primary text-[11px]">
+              Bar {(selectedMeasureIndex !== null ? selectedMeasureIndex : 0) + 1} / {score.measures.length}
+            </span>
+            <button
+              type="button"
+              onClick={() => {
+                const current = selectedMeasureIndex !== null ? selectedMeasureIndex : 0;
+                const next = Math.min(score.measures.length - 1, current + 1);
+                handleSelectMeasure(next);
+              }}
+              disabled={(selectedMeasureIndex !== null ? selectedMeasureIndex : 0) >= score.measures.length - 1}
+              className="p-1 rounded bg-surface border border-border text-text-secondary disabled:opacity-30 hover:text-text-primary"
+              title="Next Bar"
+              aria-label="Next Bar"
+            >
+              <ChevronRight size={13} />
+            </button>
+          </div>
+
+          {/* Quick bar actions & Clef toggle */}
+          <div className="flex items-center gap-1">
+            <button
+              type="button"
+              onClick={handleAddMeasure}
+              className="flex items-center gap-1 px-2 py-0.5 rounded bg-surface border border-border text-primary font-medium hover:bg-primary-soft text-[11px]"
+              title="Add new measure"
+            >
+              <Plus size={12} />
+              <span>Bar</span>
+            </button>
+            <button
+              type="button"
+              onClick={() => {
+                const targetIdx = selectedMeasureIndex !== null ? selectedMeasureIndex : score.measures.length - 1;
+                handleDuplicateMeasure(targetIdx);
+              }}
+              className="p-1 rounded bg-surface border border-border text-text-secondary hover:text-text-primary text-[11px]"
+              title="Duplicate current bar"
+              aria-label="Duplicate current bar"
+            >
+              <Copy size={12} />
+            </button>
+            <button
+              type="button"
+              onClick={() => {
+                if (score.staffMode === 'grand') {
+                  handleUpdateScoreSettings({ staffMode: 'single', clef: 'treble' });
+                } else if (score.clef === 'treble') {
+                  handleUpdateScoreSettings({ staffMode: 'single', clef: 'bass' });
+                } else {
+                  handleUpdateScoreSettings({ staffMode: 'grand' });
+                }
+              }}
+              className="flex items-center gap-1 px-2 py-0.5 rounded font-bold border transition-colors bg-primary-soft text-primary border-primary/30 text-[11px]"
+              title={`Switch Staff / Clef (currently ${score.staffMode === 'grand' ? 'Grand Staff (Piano 𝄞+𝄢)' : score.clef === 'treble' ? 'Treble 𝄞' : 'Bass 𝄢'})`}
+            >
+              <span>{score.staffMode === 'grand' ? '𝄞+𝄢 Piano' : score.clef === 'treble' ? '𝄞 Treble' : '𝄢 Bass'}</span>
+            </button>
+          </div>
+        </div>
       </div>
 
       <div className="flex flex-1 overflow-hidden relative">

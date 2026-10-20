@@ -54,7 +54,9 @@ export function selectionMeasureIndex(selection: Selection): number | null {
 }
 
 function scoreHasNote(score: Score, noteId: string): boolean {
-  return score.measures.some((m) => m.events.some((n) => n.id === noteId));
+  return score.measures.some(
+    (m) => m.events.some((n) => n.id === noteId) || (m.bassEvents?.some((n) => n.id === noteId) ?? false)
+  );
 }
 
 /**
@@ -181,7 +183,8 @@ export function insertEvent(
   measureIndex: number,
   index: number,
   event: Omit<ScoreNote, 'id'>,
-  id?: string
+  id?: string,
+  staff: 'treble' | 'bass' = 'treble'
 ): Score {
   if (measureIndex < 0 || measureIndex >= score.measures.length) return score;
 
@@ -192,6 +195,12 @@ export function insertEvent(
     updatedAt: Date.now(),
     measures: score.measures.map((m, idx) => {
       if (idx !== measureIndex) return m;
+      if (staff === 'bass') {
+        const bassEvents = (m.bassEvents ?? []).slice();
+        const at = Math.max(0, Math.min(index, bassEvents.length));
+        bassEvents.splice(at, 0, newEvent);
+        return { ...m, bassEvents };
+      }
       const events = m.events.slice();
       const at = Math.max(0, Math.min(index, events.length));
       events.splice(at, 0, newEvent);
@@ -204,25 +213,34 @@ export function updateEvent(score: Score, noteId: string, updates: Partial<Score
   let changed = false;
 
   const measures = score.measures.map((m) => {
-    if (!m.events.some((n) => n.id === noteId)) return m;
-    const events = m.events.map((n) => {
-      if (n.id !== noteId) return n;
-      const merged = { ...n, ...updates };
-      if (
-        merged.step === n.step &&
-        merged.octave === n.octave &&
-        merged.duration === n.duration &&
-        merged.dotted === n.dotted &&
-        merged.accidental === n.accidental &&
-        merged.isRest === n.isRest &&
-        merged.tied === n.tied
-      ) {
-        return n; // no-op update
-      }
-      changed = true;
-      return merged;
-    });
-    return changed ? { ...m, events } : m;
+    const inTreble = m.events.some((n) => n.id === noteId);
+    const inBass = m.bassEvents?.some((n) => n.id === noteId);
+    if (!inTreble && !inBass) return m;
+
+    const updateList = (list: ScoreNote[]) =>
+      list.map((n) => {
+        if (n.id !== noteId) return n;
+        const merged = { ...n, ...updates };
+        if (
+          merged.step === n.step &&
+          merged.octave === n.octave &&
+          merged.duration === n.duration &&
+          merged.dotted === n.dotted &&
+          merged.accidental === n.accidental &&
+          merged.isRest === n.isRest &&
+          merged.tied === n.tied
+        ) {
+          return n;
+        }
+        changed = true;
+        return merged;
+      });
+
+    return {
+      ...m,
+      events: inTreble ? updateList(m.events) : m.events,
+      bassEvents: inBass && m.bassEvents ? updateList(m.bassEvents) : m.bassEvents,
+    };
   });
 
   return changed ? { ...score, measures, updatedAt: Date.now() } : score;
@@ -234,35 +252,59 @@ export function deleteEvent(score: Score, noteId: string): Score {
   return {
     ...score,
     updatedAt: Date.now(),
-    measures: score.measures.map((m) =>
-      m.events.some((n) => n.id === noteId) ? { ...m, events: m.events.filter((n) => n.id !== noteId) } : m
-    ),
+    measures: score.measures.map((m) => ({
+      ...m,
+      events: m.events.filter((n) => n.id !== noteId),
+      bassEvents: m.bassEvents ? m.bassEvents.filter((n) => n.id !== noteId) : undefined,
+    })),
   };
 }
 
 /** The event that should become selected after deleting `noteId`, if any. */
 export function neighbourEventId(score: Score, noteId: string): string | null {
   for (const measure of score.measures) {
-    const index = measure.events.findIndex((n) => n.id === noteId);
-    if (index === -1) continue;
-    const neighbour = measure.events[index + 1] ?? measure.events[index - 1];
-    return neighbour ? neighbour.id : null;
+    const tIdx = measure.events.findIndex((n) => n.id === noteId);
+    if (tIdx !== -1) {
+      const neighbour = measure.events[tIdx + 1] ?? measure.events[tIdx - 1];
+      return neighbour ? neighbour.id : null;
+    }
+    if (measure.bassEvents) {
+      const bIdx = measure.bassEvents.findIndex((n) => n.id === noteId);
+      if (bIdx !== -1) {
+        const neighbour = measure.bassEvents[bIdx + 1] ?? measure.bassEvents[bIdx - 1];
+        return neighbour ? neighbour.id : null;
+      }
+    }
   }
   return null;
 }
 
-export function replaceMeasureEvents(score: Score, measureIndex: number, events: ScoreNote[]): Score {
+export function replaceMeasureEvents(
+  score: Score,
+  measureIndex: number,
+  events: ScoreNote[],
+  staff: 'treble' | 'bass' = 'treble'
+): Score {
   if (measureIndex < 0 || measureIndex >= score.measures.length) return score;
 
   return {
     ...score,
     updatedAt: Date.now(),
-    measures: score.measures.map((m, idx) => (idx === measureIndex ? { ...m, events } : m)),
+    measures: score.measures.map((m, idx) => {
+      if (idx !== measureIndex) return m;
+      if (staff === 'bass') return { ...m, bassEvents: events };
+      return { ...m, events };
+    }),
   };
 }
 
 export function addMeasure(score: Score): Score {
-  const measure: Measure = { id: makeMeasureId(score.measures.length), events: [] };
+  const isGrand = score.staffMode === 'grand';
+  const measure: Measure = {
+    id: makeMeasureId(score.measures.length),
+    events: [],
+    bassEvents: isGrand ? [] : undefined,
+  };
   return { ...score, measures: [...score.measures, measure], updatedAt: Date.now() };
 }
 

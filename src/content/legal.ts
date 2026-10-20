@@ -369,8 +369,6 @@ export const LEGAL_DOCUMENTS: Record<LegalRouteName, LegalDocument> = {
         paragraphs: [
           'MusikFlo has not undergone an independent security audit or penetration test, and this page makes no such claim. The statements above describe the implementation as it exists in this repository.',
         ],
-        callout:
-          'If you deploy a hosted instance, verify your own hosting provider\'s TLS, header and logging configuration. Those controls are outside the application source and are not covered by anything on this page.',
       },
     ],
   },

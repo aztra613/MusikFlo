@@ -190,4 +190,22 @@ describe('score producers', () => {
     const ids = twice.measures[0].events.map((e) => e.id);
     expect(new Set(ids).size).toBe(ids.length);
   });
+
+  it('supports Grand Staff dual staves with bassEvents insertion, update, and deletion', () => {
+    let score = makeScore();
+    score = { ...score, staffMode: 'grand' };
+
+    // Insert into bass staff
+    score = insertEvent(score, 0, 0, { step: 'c', octave: 3, duration: '4' }, 'bass-1', 'bass');
+    expect(score.measures[0].bassEvents).toBeDefined();
+    expect(score.measures[0].bassEvents?.[0]).toMatchObject({ id: 'bass-1', step: 'c', octave: 3 });
+
+    // Update bass event
+    score = updateEvent(score, 'bass-1', { step: 'g', octave: 2 });
+    expect(score.measures[0].bassEvents?.[0]).toMatchObject({ step: 'g', octave: 2 });
+
+    // Delete bass event
+    score = deleteEvent(score, 'bass-1');
+    expect(score.measures[0].bassEvents).toHaveLength(0);
+  });
 });

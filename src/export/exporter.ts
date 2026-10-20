@@ -4,7 +4,7 @@ import { Score, getEventTicks, TICKS_PER_QUARTER } from '../types/music';
 import { audioEngine } from '../audio/audioEngine';
 import { gmProgramFor } from '../audio/instruments';
 import { PRINT_NOTATION_PALETTE, renderScoreInto } from '../score/renderScore';
-import { DEFAULT_LAYOUT, totalHeight, totalWidth } from '../score/geometry';
+import { DEFAULT_LAYOUT, getLayoutForScore, totalHeight, totalWidth } from '../score/geometry';
 
 /** Warm score paper used by the PDF page and by the engraved raster. */
 const PRINT_PAPER = '#FFFDF7';
@@ -59,40 +59,58 @@ export function downloadBlob(blob: Blob, filename: string) {
 
 /**
  * Export the score as a Standard MIDI File.
- *
- * A rest is encoded as a single zero-velocity note whose *duration* carries the
- * silence. Two details matter here:
- *  - the velocity must be the string '0': midi-writer-js uses `velocity || 50`,
- *    so a numeric 0 silently becomes a *sounding* note;
- *  - `wait` must not be set, because the duration already advances the track and
- *    adding a wait would move the timeline twice per rest.
+ * Supports multi-track export when Grand Staff (Treble + Bass) is active.
  */
 export function exportToMidi(score: Score): Blob {
-  const track = new MidiWriter.Track();
-  track.setTempo(score.tempo || 100);
-  track.addTrackName(score.title || 'MusikFlo Composition');
+  const tracks: any[] = [];
 
-  // Program change comes from the voice table, so MIDI cannot disagree with the
-  // instrument the score actually plays.
-  track.addEvent(new MidiWriter.ProgramChangeEvent({ instrument: gmProgramFor(score.instrument) }));
+  const trebleTrack = new MidiWriter.Track();
+  trebleTrack.setTempo(score.tempo || 100);
+  trebleTrack.addTrackName((score.title || 'MusikFlo Composition') + (score.staffMode === 'grand' ? ' - Treble' : ''));
+  trebleTrack.addEvent(new MidiWriter.ProgramChangeEvent({ instrument: gmProgramFor(score.instrument) }));
 
   score.measures.forEach((measure) => {
     measure.events.forEach((note) => {
       const duration = note.dotted ? `d${note.duration}` : note.duration;
 
       if (note.isRest) {
-        track.addEvent(new MidiWriter.NoteEvent({ pitch: ['C4'], duration, velocity: '0' }));
+        trebleTrack.addEvent(new MidiWriter.NoteEvent({ pitch: ['C4'], duration, velocity: '0' }));
         return;
       }
 
       const accidental = note.accidental === '#' ? '#' : note.accidental === 'b' ? 'b' : '';
-      track.addEvent(
+      trebleTrack.addEvent(
         new MidiWriter.NoteEvent({ pitch: [`${note.step.toUpperCase()}${accidental}${note.octave}`], duration, velocity: 85 })
       );
     });
   });
+  tracks.push(trebleTrack);
 
-  const bytes = new MidiWriter.Writer([track]).buildFile();
+  if (score.staffMode === 'grand') {
+    const bassTrack = new MidiWriter.Track();
+    bassTrack.setTempo(score.tempo || 100);
+    bassTrack.addTrackName((score.title || 'MusikFlo Composition') + ' - Bass');
+    bassTrack.addEvent(new MidiWriter.ProgramChangeEvent({ instrument: gmProgramFor(score.instrument) }));
+
+    score.measures.forEach((measure) => {
+      (measure.bassEvents ?? []).forEach((note) => {
+        const duration = note.dotted ? `d${note.duration}` : note.duration;
+
+        if (note.isRest) {
+          bassTrack.addEvent(new MidiWriter.NoteEvent({ pitch: ['C3'], duration, velocity: '0' }));
+          return;
+        }
+
+        const accidental = note.accidental === '#' ? '#' : note.accidental === 'b' ? 'b' : '';
+        bassTrack.addEvent(
+          new MidiWriter.NoteEvent({ pitch: [`${note.step.toUpperCase()}${accidental}${note.octave}`], duration, velocity: 85 })
+        );
+      });
+    });
+    tracks.push(bassTrack);
+  }
+
+  const bytes = new MidiWriter.Writer(tracks).buildFile();
   return new Blob([bytes], { type: 'audio/midi' });
 }
 
@@ -285,14 +303,13 @@ export async function exportScoreToWav(score: Score, filename: string): Promise<
  * Distribute rows evenly across pages, avoiding orphan rows on the last page.
  * Exported so unit tests can verify the pagination logic.
  */
-export function computePdfPageRowBatches(totalRowCount: number): number[][] {
+export function computePdfPageRowBatches(totalRowCount: number, targetPerPage = 4): number[][] {
   if (totalRowCount <= 0) return [[]];
-  if (totalRowCount <= 5) {
+  if (totalRowCount <= targetPerPage + 1) {
     return [Array.from({ length: totalRowCount }, (_, i) => i)];
   }
 
-  const TARGET_PER_PAGE = 4;
-  const pageCount = Math.ceil(totalRowCount / TARGET_PER_PAGE);
+  const pageCount = Math.ceil(totalRowCount / targetPerPage);
   const rowsPerPage = Math.ceil(totalRowCount / pageCount);
 
   const pages: number[][] = [];
@@ -327,6 +344,7 @@ export async function exportScoreToPdf(score: Score, filename: string): Promise<
   const marginX = 36; // 0.5 inch margins
   const printableWidth = pageWidth - marginX * 2; // 523.28 pt
 
+  const layout = getLayoutForScore(score);
   const { canvas, width } = renderScoreToCanvas(score, 2.5);
   if (!canvas) {
     throw new Error('The score could not be engraved for PDF export. Try again once the notation has rendered.');
@@ -334,10 +352,11 @@ export async function exportScoreToPdf(score: Score, filename: string): Promise<
 
   const pixelRatio = canvas.width / Math.max(1, width);
   const scale = printableWidth / Math.max(1, width);
-  const rowHeightPt = DEFAULT_LAYOUT.staveHeight * scale;
+  const rowHeightPt = layout.staveHeight * scale;
 
-  const totalRowCount = Math.ceil(Math.max(1, score.measures.length) / DEFAULT_LAYOUT.measuresPerRow);
-  const pageRowBatches = computePdfPageRowBatches(totalRowCount);
+  const totalRowCount = Math.ceil(Math.max(1, score.measures.length) / layout.measuresPerRow);
+  const targetPerPage = score.staffMode === 'grand' ? 2 : 4;
+  const pageRowBatches = computePdfPageRowBatches(totalRowCount, targetPerPage);
   const totalPages = pageRowBatches.length;
 
   pageRowBatches.forEach((pageRows, pageIndex) => {
@@ -368,11 +387,18 @@ export async function exportScoreToPdf(score: Score, filename: string): Promise<
         { align: 'center' }
       );
 
+      const clefDesc =
+        score.staffMode === 'grand'
+          ? 'Grand Staff (Piano 𝄞 + 𝄢)'
+          : score.clef === 'treble'
+            ? 'Treble Clef'
+            : 'Bass Clef';
+
       doc.setFont('helvetica', 'normal');
       doc.setFontSize(8.5);
       doc.setTextColor(116, 129, 124);
       doc.text(
-        `${score.clef === 'treble' ? 'Treble Clef' : 'Bass Clef'}   ·   Time Signature: ${score.timeSignature.numerator}/${
+        `${clefDesc}   ·   Time Signature: ${score.timeSignature.numerator}/${
           score.timeSignature.denominator
         }   ·   Tempo: ${score.tempo || 100} BPM   ·   Key: ${score.keySignature || 'C'}`,
         pageWidth / 2,
@@ -401,8 +427,8 @@ export async function exportScoreToPdf(score: Score, filename: string): Promise<
     if (pageRows.length > 0) {
       const rStart = pageRows[0];
       const rowCount = pageRows.length;
-      const yScoreStart = DEFAULT_LAYOUT.startY + rStart * DEFAULT_LAYOUT.staveHeight;
-      const yScoreHeight = rowCount * DEFAULT_LAYOUT.staveHeight;
+      const yScoreStart = layout.startY + rStart * layout.staveHeight;
+      const yScoreHeight = rowCount * layout.staveHeight;
 
       const sX = 0;
       const sY = Math.round(yScoreStart * pixelRatio);
@@ -445,13 +471,15 @@ export function renderScoreToCanvas(
   score: Score,
   pixelRatio = 2.5
 ): { canvas: HTMLCanvasElement | null; width: number; height: number } {
-  const width = totalWidth(DEFAULT_LAYOUT);
-  const height = totalHeight(score.measures.length, DEFAULT_LAYOUT);
+  const layout = getLayoutForScore(score);
+  const width = totalWidth(layout);
+  const height = totalHeight(score.measures.length, layout);
 
   const host = document.createElement('div');
   const rendered = renderScoreInto(host, {
     score,
     palette: PRINT_NOTATION_PALETTE,
+    layout,
     backend: 'canvas',
     pixelRatio,
     // Bake the paper colour into the raster so the score never prints onto a

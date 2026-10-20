@@ -1,4 +1,4 @@
-import React from 'react';
+import React, { useState } from 'react';
 import { Score, Clef, InstrumentId, validateMeasure, MeasureValidation } from '../types/music';
 import { INSTRUMENT_IDS, VOICES } from '../audio/instruments';
 import { MEASURES_PER_ROW } from '../score/geometry';
@@ -29,6 +29,8 @@ export const ScoreSetupStrip: React.FC<ScoreSetupStripProps> = ({
   hasCopiedMeasure,
   onPasteMeasure,
 }) => {
+  const [isMobileExpanded, setIsMobileExpanded] = useState(false);
+
   // Compute validations for all measures
   const validations: MeasureValidation[] = score.measures.map((m, idx) =>
     validateMeasure(m, idx, score.timeSignature)
@@ -36,9 +38,47 @@ export const ScoreSetupStrip: React.FC<ScoreSetupStripProps> = ({
 
   return (
     <div className="flex flex-col border-b border-border bg-surface text-xs select-none">
-      {/* Primary Setup Controls */}
-      <div className="flex items-center justify-between flex-wrap gap-3 px-4 py-2.5">
+      {/* Mobile summary bar (compact) */}
+      <div className="md:hidden flex items-center justify-between px-3 py-1.5 bg-surface-raised/40 border-b border-border text-xs">
+        <div className="flex items-center gap-1.5 text-text-secondary font-medium overflow-hidden text-ellipsis whitespace-nowrap">
+          <span className="font-semibold text-text-primary">
+            {score.staffMode === 'grand' ? '𝄞+𝄢 Piano' : score.clef === 'treble' ? '𝄞 Treble' : '𝄢 Bass'}
+          </span>
+          <span className="text-text-muted">·</span>
+          <span>{score.timeSignature.numerator}/{score.timeSignature.denominator}</span>
+          <span className="text-text-muted">·</span>
+          <span>Key {score.keySignature || 'C'}</span>
+          <span className="text-text-muted">·</span>
+          <span className="truncate">{VOICES[score.instrument]?.label || score.instrument}</span>
+        </div>
+        <button
+          type="button"
+          onClick={() => setIsMobileExpanded((e) => !e)}
+          className="shrink-0 px-2 py-0.5 rounded text-[11px] font-semibold bg-app-bg border border-border text-text-primary hover:bg-surface"
+        >
+          {isMobileExpanded ? 'Settings ▴' : 'Settings ▾'}
+        </button>
+      </div>
+
+      {/* Primary Setup Controls (desktop always visible, mobile toggleable) */}
+      <div className={`${isMobileExpanded ? 'flex' : 'hidden md:flex'} items-center justify-between flex-wrap gap-3 px-4 py-2.5`}>
         <div className="flex items-center flex-wrap gap-4">
+          {/* Staff Mode Selector */}
+          <div className="flex items-center gap-1.5">
+            <label htmlFor="staff-mode-select" className="font-semibold text-text-muted">
+              Staff:
+            </label>
+            <select
+              id="staff-mode-select"
+              value={score.staffMode || 'single'}
+              onChange={(e) => onUpdateScore({ staffMode: e.target.value as 'single' | 'grand' })}
+              className="py-1 px-2 rounded-md bg-app-bg border border-border text-text-primary font-medium focus:outline-none focus:border-primary"
+            >
+              <option value="single">Single Staff</option>
+              <option value="grand">Grand Staff (Piano 𝄞 + 𝄢)</option>
+            </select>
+          </div>
+
           {/* Instrument Selector */}
           <div className="flex items-center gap-1.5">
             <label htmlFor="instrument-select" className="font-semibold text-text-muted">
@@ -59,20 +99,22 @@ export const ScoreSetupStrip: React.FC<ScoreSetupStripProps> = ({
           </div>
 
           {/* Clef Selector */}
-          <div className="flex items-center gap-1.5">
-            <label htmlFor="clef-select" className="font-semibold text-text-muted">
-              Clef:
-            </label>
-            <select
-              id="clef-select"
-              value={score.clef}
-              onChange={(e) => onUpdateScore({ clef: e.target.value as Clef })}
-              className="py-1 px-2 rounded-md bg-app-bg border border-border text-text-primary font-medium focus:outline-none focus:border-primary"
-            >
-              <option value="treble">Treble (G Clef)</option>
-              <option value="bass">Bass (F Clef)</option>
-            </select>
-          </div>
+          {score.staffMode !== 'grand' && (
+            <div className="flex items-center gap-1.5">
+              <label htmlFor="clef-select" className="font-semibold text-text-muted">
+                Clef:
+              </label>
+              <select
+                id="clef-select"
+                value={score.clef}
+                onChange={(e) => onUpdateScore({ clef: e.target.value as Clef })}
+                className="py-1 px-2 rounded-md bg-app-bg border border-border text-text-primary font-medium focus:outline-none focus:border-primary"
+              >
+                <option value="treble">Treble (G Clef)</option>
+                <option value="bass">Bass (F Clef)</option>
+              </select>
+            </div>
+          )}
 
           {/* Time Signature */}
           <div className="flex items-center gap-1.5">

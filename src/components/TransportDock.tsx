@@ -136,6 +136,47 @@ export const TransportDock: React.FC<TransportDockProps> = ({
         >
           {isMetronome ? <Bell size={16} /> : <BellOff size={16} />}
         </button>
+
+        {score.staffMode === 'grand' && (
+          <div className="flex items-center gap-0.5 bg-app-bg p-0.5 rounded-lg border border-border ml-1">
+            <button
+              type="button"
+              onClick={() => onUpdateScore({ playbackMute: { trebleMuted: false, bassMuted: false } })}
+              className={`px-2 py-1 rounded-md text-[11px] font-semibold transition-all ${
+                !score.playbackMute?.trebleMuted && !score.playbackMute?.bassMuted
+                  ? 'bg-primary text-white shadow-2xs'
+                  : 'text-text-secondary hover:text-text-primary hover:bg-surface'
+              }`}
+              title="Play Both Treble & Bass"
+            >
+              Both (𝄞+𝄢)
+            </button>
+            <button
+              type="button"
+              onClick={() => onUpdateScore({ playbackMute: { trebleMuted: false, bassMuted: true } })}
+              className={`px-2 py-1 rounded-md text-[11px] font-semibold transition-all ${
+                !score.playbackMute?.trebleMuted && score.playbackMute?.bassMuted
+                  ? 'bg-brass text-white shadow-2xs'
+                  : 'text-text-secondary hover:text-text-primary hover:bg-surface'
+              }`}
+              title="Play Treble Clef Only"
+            >
+              𝄞 Treble
+            </button>
+            <button
+              type="button"
+              onClick={() => onUpdateScore({ playbackMute: { trebleMuted: true, bassMuted: false } })}
+              className={`px-2 py-1 rounded-md text-[11px] font-semibold transition-all ${
+                score.playbackMute?.trebleMuted && !score.playbackMute?.bassMuted
+                  ? 'bg-brass text-white shadow-2xs'
+                  : 'text-text-secondary hover:text-text-primary hover:bg-surface'
+              }`}
+              title="Play Bass Clef Only"
+            >
+              𝄢 Bass
+            </button>
+          </div>
+        )}
       </div>
 
       <div className="flex items-center gap-3 px-3 py-1.5 rounded-lg bg-app-bg border border-border text-xs font-mono">

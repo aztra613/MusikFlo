@@ -25,6 +25,11 @@ export const STAVE_HEIGHT = 170;
 export const START_X = 40;
 export const START_Y = 40;
 
+/** Grand Staff (Piano 𝄞 + 𝄢) geometry */
+export const GRAND_STAVE_HEIGHT = 270;
+export const GRAND_BASS_OFFSET_Y = 100;
+export const GRAND_START_X = 55;
+
 /** VexFlow's default distance between adjacent staff lines, in score units. */
 export const STAFF_LINE_SPACING = 10;
 /** VexFlow's default `spaceAboveStaffLn`: the gap above line 0, in line units. */
@@ -36,6 +41,8 @@ export interface ScoreLayout {
   staveHeight: number;
   startX: number;
   startY: number;
+  staffMode?: 'single' | 'grand';
+  bassOffsetY?: number;
 }
 
 export const DEFAULT_LAYOUT: ScoreLayout = {
@@ -44,7 +51,22 @@ export const DEFAULT_LAYOUT: ScoreLayout = {
   staveHeight: STAVE_HEIGHT,
   startX: START_X,
   startY: START_Y,
+  staffMode: 'single',
+  bassOffsetY: 0,
 };
+
+export function getLayoutForScore(score: { staffMode?: 'single' | 'grand' }): ScoreLayout {
+  const isGrand = score.staffMode === 'grand';
+  return {
+    measuresPerRow: MEASURES_PER_ROW,
+    measureWidth: MEASURE_WIDTH,
+    staveHeight: isGrand ? GRAND_STAVE_HEIGHT : STAVE_HEIGHT,
+    startX: isGrand ? GRAND_START_X : START_X,
+    startY: START_Y,
+    staffMode: score.staffMode ?? 'single',
+    bassOffsetY: isGrand ? GRAND_BASS_OFFSET_Y : 0,
+  };
+}
 
 export interface MeasureRect {
   index: number;

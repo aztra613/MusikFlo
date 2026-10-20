@@ -5,7 +5,7 @@ import { audioEngine } from '../audio/audioEngine';
 import { INSTRUMENT_IDS, VOICES } from '../audio/instruments';
 import { BrandMark } from './BrandMark';
 import { Footer } from './Footer';
-import { ArrowRight, Download, FileAudio, FileCode, Music, Play, Printer, Square, Sun, Moon, ShieldCheck, Smartphone, Sparkles } from 'lucide-react';
+import { ArrowRight, Download, FileAudio, FileCode, Music, Play, Printer, Square, Sun, Moon, ShieldCheck, Sparkles } from 'lucide-react';
 
 interface LandingPageProps {
   onStartComposing: () => void;
@@ -95,14 +95,14 @@ const FEATURES = [
     body: 'Convert MP3 or WAV clips up to 3 minutes into editable notation using on-device neural transcription.',
   },
   {
-    icon: ShieldCheck,
-    title: 'Zero-server privacy',
-    body: 'Your recordings and compositions never leave your device. All synthesis, ML, and exports run 100% in-browser.',
+    icon: Sparkles,
+    title: 'Grand Staff & dual-clef writing',
+    body: 'Write piano parts on linked Treble + Bass staves with a real VexFlow brace. Solo or mute either hand during playback.',
   },
   {
-    icon: Smartphone,
-    title: 'Installable offline PWA',
-    body: 'Install MusikFlo on your desktop, tablet, or phone for an instant, distraction-free native studio experience.',
+    icon: ShieldCheck,
+    title: 'Meter check & theory guard-rails',
+    body: 'Live beat-count feedback per bar, overfill warnings, and key-aware accidentals catch mistakes before they reach your ears.',
   },
 ];
 

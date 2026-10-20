@@ -226,6 +226,8 @@ class AudioEngine {
       timeOffsetSec: number;
       durationSec: number;
       beatInMeasure: number;
+      isAudible: boolean;
+      isVisualTick: boolean;
     }
 
     const scheduledEvents: ScheduledEvent[] = [];
@@ -242,27 +244,60 @@ class AudioEngine {
         : []
       : score.measures.slice(startMeasureIndex).map((measure, i) => ({ measure, mIdx: startMeasureIndex + i }));
 
-    targetMeasures.forEach(({ measure, mIdx }) => {
-      let measureAccumTicks = 0;
+    const isTrebleMuted = !!score.playbackMute?.trebleMuted;
+    const isBassMuted = !!score.playbackMute?.bassMuted;
 
+    targetMeasures.forEach(({ measure, mIdx }) => {
+      const measureStartTime = currentTimeOffset;
+      let trebleAccumTicks = 0;
+      let bassAccumTicks = 0;
+
+      // Schedule treble events
       measure.events.forEach((note, eIdx) => {
         const ticks = getEventTicks(note);
         const durationSec = ticks * secondsPerTick;
-        const beatInMeasure = measureAccumTicks / TICKS_PER_QUARTER + 1;
+        const beatInMeasure = trebleAccumTicks / TICKS_PER_QUARTER + 1;
 
         scheduledEvents.push({
           measureIndex: mIdx,
           eventIndex: eIdx,
           globalEventIndex: globalEventIndex++,
           note,
-          timeOffsetSec: currentTimeOffset,
+          timeOffsetSec: measureStartTime + trebleAccumTicks * secondsPerTick,
           durationSec,
           beatInMeasure,
+          isAudible: !isTrebleMuted,
+          isVisualTick: true,
         });
 
-        currentTimeOffset += durationSec;
-        measureAccumTicks += ticks;
+        trebleAccumTicks += ticks;
       });
+
+      // Schedule bass events if grand staff mode
+      if (score.staffMode === 'grand' && measure.bassEvents) {
+        measure.bassEvents.forEach((note, bIdx) => {
+          const ticks = getEventTicks(note);
+          const durationSec = ticks * secondsPerTick;
+          const beatInMeasure = bassAccumTicks / TICKS_PER_QUARTER + 1;
+
+          scheduledEvents.push({
+            measureIndex: mIdx,
+            eventIndex: bIdx,
+            globalEventIndex: globalEventIndex++,
+            note,
+            timeOffsetSec: measureStartTime + bassAccumTicks * secondsPerTick,
+            durationSec,
+            beatInMeasure,
+            isAudible: !isBassMuted,
+            isVisualTick: measure.events.length === 0, // only drive tick if no treble notes
+          });
+
+          bassAccumTicks += ticks;
+        });
+      }
+
+      const measureTicks = Math.max(trebleAccumTicks, bassAccumTicks);
+      currentTimeOffset += measureTicks * secondsPerTick;
     });
 
     const totalDurationSec = currentTimeOffset;
@@ -279,27 +314,29 @@ class AudioEngine {
       const timeoutId = window.setTimeout(() => {
         if (!this.isPlaying || this.playToken !== token) return;
 
-        this.emitTick({
-          measureIndex: ev.measureIndex,
-          eventIndex: ev.eventIndex,
-          globalEventIndex: ev.globalEventIndex,
-          beat: ev.beatInMeasure,
-          isPlaying: true,
-        });
+        if (ev.isVisualTick) {
+          this.emitTick({
+            measureIndex: ev.measureIndex,
+            eventIndex: ev.eventIndex,
+            globalEventIndex: ev.globalEventIndex,
+            beat: ev.beatInMeasure,
+            isPlaying: true,
+          });
 
-        // Metronome click on primary beats if enabled.
-        if (this.metronomeEnabled && this.metronomeSynth) {
-          if (Math.abs(ev.beatInMeasure - Math.round(ev.beatInMeasure)) < 0.05) {
-            const isFirstBeat = Math.round(ev.beatInMeasure) === 1;
-            try {
-              this.metronomeSynth.triggerAttackRelease(isFirstBeat ? 'C5' : 'G4', '32n');
-            } catch {
-              // Ignore metronome drop
+          // Metronome click on primary beats if enabled.
+          if (this.metronomeEnabled && this.metronomeSynth) {
+            if (Math.abs(ev.beatInMeasure - Math.round(ev.beatInMeasure)) < 0.05) {
+              const isFirstBeat = Math.round(ev.beatInMeasure) === 1;
+              try {
+                this.metronomeSynth.triggerAttackRelease(isFirstBeat ? 'C5' : 'G4', '32n');
+              } catch {
+                // Ignore metronome drop
+              }
             }
           }
         }
 
-        if (!ev.note.isRest) {
+        if (ev.isAudible && !ev.note.isRest) {
           const midi = getMidiNumber(ev.note.step, ev.note.octave, ev.note.accidental);
           const freq = getNoteFrequency(midi);
           try {
@@ -353,25 +390,35 @@ class AudioEngine {
    * Render the score to a 16-bit 44.1 kHz stereo PCM WAV using an
    * OfflineAudioContext.
    *
-   * The voice is built from the same {@link VoiceSpec} the live engine uses:
-   * partials, envelope, filter sweep, breath noise, detune and vibrato all come
-   * from that one table, so the exported audio matches the selected instrument.
+   * Supports Grand Staff dual staves (both playing in lockstep) and
+   * honors Solo/Mute settings (`score.playbackMute`).
    */
   public async renderToWav(score: Score): Promise<Blob> {
     const spec = getVoice(score.instrument);
     const bpm = score.tempo || 100;
     const secondsPerTick = 60 / bpm / TICKS_PER_QUARTER;
 
-    let totalTicks = 0;
+    const isTrebleMuted = !!score.playbackMute?.trebleMuted;
+    const isBassMuted = !!score.playbackMute?.bassMuted;
+
+    let totalDurationSec = 0;
     score.measures.forEach((measure) => {
+      let trebleTicks = 0;
+      let bassTicks = 0;
       measure.events.forEach((event) => {
-        totalTicks += getEventTicks(event);
+        trebleTicks += getEventTicks(event);
       });
+      if (score.staffMode === 'grand' && measure.bassEvents) {
+        measure.bassEvents.forEach((event) => {
+          bassTicks += getEventTicks(event);
+        });
+      }
+      totalDurationSec += Math.max(trebleTicks, bassTicks) * secondsPerTick;
     });
 
     const leadInSec = 0.1;
     const tailSec = Math.max(0.8, spec.envelope.release + 0.4);
-    const durationSec = Math.max(1, leadInSec + totalTicks * secondsPerTick + tailSec);
+    const durationSec = Math.max(1, leadInSec + totalDurationSec + tailSec);
     const sampleRate = 44100;
     const offlineCtx = new OfflineAudioContext(2, Math.ceil(sampleRate * durationSec), sampleRate);
 
@@ -389,122 +436,144 @@ class AudioEngine {
       }
     }
 
-    let cursor = leadInSec;
+    const renderNoteOffline = (note: ScoreNote, start: number, noteDurSec: number) => {
+      const midi = getMidiNumber(note.step, note.octave, note.accidental);
+      const freq = getNoteFrequency(midi);
+
+      const hold = Math.max(0.08, noteDurSec * 0.95);
+      const stop = start + hold;
+      const end = stop + spec.envelope.release + 0.1;
+
+      const { attack, decay, sustain } = spec.envelope;
+      const peak = 0.5;
+      const attackEnd = start + Math.max(0.001, attack);
+      const decayEnd = attackEnd + Math.max(0.001, decay);
+
+      const voiceGain = offlineCtx.createGain();
+      voiceGain.gain.setValueAtTime(0.0001, start);
+      voiceGain.gain.linearRampToValueAtTime(peak, attackEnd);
+      voiceGain.gain.linearRampToValueAtTime(peak * Math.max(0.001, sustain), decayEnd);
+      voiceGain.gain.setValueAtTime(peak * Math.max(0.001, sustain), stop);
+      voiceGain.gain.linearRampToValueAtTime(0.0001, stop + spec.envelope.release);
+
+      const filter = offlineCtx.createBiquadFilter();
+      filter.type = spec.filter.type;
+      filter.Q.value = spec.filter.q;
+      filter.frequency.setValueAtTime(
+        Math.min(sampleRate / 2 - 1000, spec.filter.hz + spec.filter.envAmount),
+        start
+      );
+      filter.frequency.exponentialRampToValueAtTime(
+        Math.max(60, spec.filter.hz),
+        start + Math.max(0.02, spec.filter.envDecay)
+      );
+
+      let vibratoGain: GainNode | null = null;
+      if (spec.vibrato) {
+        const lfo = offlineCtx.createOscillator();
+        lfo.frequency.value = spec.vibrato.rateHz;
+        vibratoGain = offlineCtx.createGain();
+        const fadeStart = start + spec.vibrato.delaySec;
+        vibratoGain.gain.setValueAtTime(0, start);
+        vibratoGain.gain.setValueAtTime(0, fadeStart);
+        vibratoGain.gain.linearRampToValueAtTime(spec.vibrato.depthCents, fadeStart + 0.4);
+        lfo.connect(vibratoGain);
+        lfo.start(start);
+        lfo.stop(end);
+      }
+
+      spec.partials.forEach((partial) => {
+        const osc = offlineCtx.createOscillator();
+        osc.type = partial.type;
+        osc.frequency.value = freq * partial.ratio;
+        if (partial.detuneCents) osc.detune.value = partial.detuneCents;
+        if (vibratoGain) vibratoGain.connect(osc.detune);
+
+        const partialGain = offlineCtx.createGain();
+        partialGain.gain.value = partial.gain;
+        osc.connect(partialGain);
+        partialGain.connect(filter);
+
+        osc.start(start);
+        osc.stop(end);
+      });
+
+      if (spec.chorus) {
+        const detuned = offlineCtx.createOscillator();
+        detuned.type = spec.partials[0].type;
+        detuned.frequency.value = freq;
+        detuned.detune.value = 4 + spec.chorus * 10;
+        const detunedGain = offlineCtx.createGain();
+        detunedGain.gain.value = spec.partials[0].gain * spec.chorus * 0.8;
+        detuned.connect(detunedGain);
+        detunedGain.connect(filter);
+        if (vibratoGain) vibratoGain.connect(detuned.detune);
+        detuned.start(start);
+        detuned.stop(end);
+      }
+
+      if (spec.noise && noiseBuffer) {
+        const source = offlineCtx.createBufferSource();
+        source.buffer = noiseBuffer;
+        source.loop = true;
+
+        const band = offlineCtx.createBiquadFilter();
+        band.type = 'bandpass';
+        band.frequency.value = spec.noise.filterHz;
+        band.Q.value = spec.noise.q;
+
+        const noiseGain = offlineCtx.createGain();
+        noiseGain.gain.setValueAtTime(spec.noise.gain, start);
+        noiseGain.gain.linearRampToValueAtTime(spec.noise.gain * 0.45, start + 0.25);
+
+        source.connect(band);
+        band.connect(noiseGain);
+        noiseGain.connect(filter);
+        source.start(start);
+        source.stop(stop + 0.05);
+      }
+
+      filter.connect(voiceGain);
+      voiceGain.connect(masterGain);
+    };
+
+    let measureCursor = leadInSec;
 
     score.measures.forEach((measure) => {
-      measure.events.forEach((note) => {
-        const noteDurSec = getEventTicks(note) * secondsPerTick;
+      let trebleCursor = measureCursor;
+      let bassCursor = measureCursor;
 
-        if (!note.isRest) {
-          const midi = getMidiNumber(note.step, note.octave, note.accidental);
-          const freq = getNoteFrequency(midi);
-
-          const start = cursor;
-          const hold = Math.max(0.08, noteDurSec * 0.95);
-          const stop = start + hold;
-          const end = stop + spec.envelope.release + 0.1;
-
-          const { attack, decay, sustain } = spec.envelope;
-          const peak = 0.5;
-          const attackEnd = start + Math.max(0.001, attack);
-          const decayEnd = attackEnd + Math.max(0.001, decay);
-
-          const voiceGain = offlineCtx.createGain();
-          voiceGain.gain.setValueAtTime(0.0001, start);
-          voiceGain.gain.linearRampToValueAtTime(peak, attackEnd);
-          voiceGain.gain.linearRampToValueAtTime(peak * Math.max(0.001, sustain), decayEnd);
-          voiceGain.gain.setValueAtTime(peak * Math.max(0.001, sustain), stop);
-          voiceGain.gain.linearRampToValueAtTime(0.0001, stop + spec.envelope.release);
-
-          // Onset filter sweep: this is what separates a plucked string from a
-          // bowed one, and a struck piano from a blown flute.
-          const filter = offlineCtx.createBiquadFilter();
-          filter.type = spec.filter.type;
-          filter.Q.value = spec.filter.q;
-          filter.frequency.setValueAtTime(
-            Math.min(sampleRate / 2 - 1000, spec.filter.hz + spec.filter.envAmount),
-            start
-          );
-          filter.frequency.exponentialRampToValueAtTime(
-            Math.max(60, spec.filter.hz),
-            start + Math.max(0.02, spec.filter.envDecay)
-          );
-
-          // Vibrato: one LFO shared into every oscillator's detune input.
-          let vibratoGain: GainNode | null = null;
-          if (spec.vibrato) {
-            const lfo = offlineCtx.createOscillator();
-            lfo.frequency.value = spec.vibrato.rateHz;
-            vibratoGain = offlineCtx.createGain();
-            const fadeStart = start + spec.vibrato.delaySec;
-            vibratoGain.gain.setValueAtTime(0, start);
-            vibratoGain.gain.setValueAtTime(0, fadeStart);
-            vibratoGain.gain.linearRampToValueAtTime(spec.vibrato.depthCents, fadeStart + 0.4);
-            lfo.connect(vibratoGain);
-            lfo.start(start);
-            lfo.stop(end);
+      if (!isTrebleMuted) {
+        measure.events.forEach((note) => {
+          const noteDurSec = getEventTicks(note) * secondsPerTick;
+          if (!note.isRest) {
+            renderNoteOffline(note, trebleCursor, noteDurSec);
           }
+          trebleCursor += noteDurSec;
+        });
+      } else {
+        measure.events.forEach((note) => {
+          trebleCursor += getEventTicks(note) * secondsPerTick;
+        });
+      }
 
-          spec.partials.forEach((partial) => {
-            const osc = offlineCtx.createOscillator();
-            osc.type = partial.type;
-            osc.frequency.value = freq * partial.ratio;
-            if (partial.detuneCents) osc.detune.value = partial.detuneCents;
-            if (vibratoGain) vibratoGain.connect(osc.detune);
-
-            const partialGain = offlineCtx.createGain();
-            partialGain.gain.value = partial.gain;
-            osc.connect(partialGain);
-            partialGain.connect(filter);
-
-            osc.start(start);
-            osc.stop(end);
+      if (score.staffMode === 'grand' && measure.bassEvents) {
+        if (!isBassMuted) {
+          measure.bassEvents.forEach((note) => {
+            const noteDurSec = getEventTicks(note) * secondsPerTick;
+            if (!note.isRest) {
+              renderNoteOffline(note, bassCursor, noteDurSec);
+            }
+            bassCursor += noteDurSec;
           });
-
-          // Detuned companion for ensemble width (strings, guitar).
-          if (spec.chorus) {
-            const detuned = offlineCtx.createOscillator();
-            detuned.type = spec.partials[0].type;
-            detuned.frequency.value = freq;
-            detuned.detune.value = 4 + spec.chorus * 10;
-            const detunedGain = offlineCtx.createGain();
-            detunedGain.gain.value = spec.partials[0].gain * spec.chorus * 0.8;
-            detuned.connect(detunedGain);
-            detunedGain.connect(filter);
-            if (vibratoGain) vibratoGain.connect(detuned.detune);
-            detuned.start(start);
-            detuned.stop(end);
-          }
-
-          // Breath noise for the flutes.
-          if (spec.noise && noiseBuffer) {
-            const source = offlineCtx.createBufferSource();
-            source.buffer = noiseBuffer;
-            source.loop = true;
-
-            const band = offlineCtx.createBiquadFilter();
-            band.type = 'bandpass';
-            band.frequency.value = spec.noise.filterHz;
-            band.Q.value = spec.noise.q;
-
-            const noiseGain = offlineCtx.createGain();
-            // Air is most audible at the attack, then settles into the note.
-            noiseGain.gain.setValueAtTime(spec.noise.gain, start);
-            noiseGain.gain.linearRampToValueAtTime(spec.noise.gain * 0.45, start + 0.25);
-
-            source.connect(band);
-            band.connect(noiseGain);
-            noiseGain.connect(filter);
-            source.start(start);
-            source.stop(stop + 0.05);
-          }
-
-          filter.connect(voiceGain);
-          voiceGain.connect(masterGain);
+        } else {
+          measure.bassEvents.forEach((note) => {
+            bassCursor += getEventTicks(note) * secondsPerTick;
+          });
         }
+      }
 
-        cursor += noteDurSec;
-      });
+      measureCursor = Math.max(trebleCursor, bassCursor);
     });
 
     const renderedBuffer = await offlineCtx.startRendering();
